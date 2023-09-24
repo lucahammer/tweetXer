@@ -111,7 +111,7 @@ var TweetsXer = {
               }
               if (
                 this.statusText != "OK" &&
-                (this.responseURL.includes("/TweetDetail?") || this.responseURL.includes("/DeleteTweet") || this.responseURL.includes("/UserTweets"))
+                !this.responseURL.includes("/fleetline")
               ) {
                 // Deletion failed
                 TweetsXer.tIds.push(TweetsXer.tId)
