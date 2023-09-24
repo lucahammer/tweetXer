@@ -110,7 +110,8 @@ var TweetsXer = {
                 TweetsXer.updateProgressBar();
               }
               if (
-                this.statusText != "OK"
+                this.statusText != "OK" &&
+                (this.responseURL.includes("/TweetDetail?") || this.responseURL.includes("/DeleteTweet") || this.responseURL.includes("/UserTweets"))
               ) {
                 // Deletion failed
                 TweetsXer.tIds.push(TweetsXer.tId)
