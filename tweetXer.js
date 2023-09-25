@@ -1,3 +1,14 @@
+// ==UserScript==
+// @name         TweetXer
+// @namespace    https://gist.github.com/lucahammer/a4d1e957ec9e061e3cccafcbed599e16/
+// @version      0.1
+// @description  Allows you to delete all your Tweets for free.
+// @author       Luca
+// @match        https://twitter.com/*
+// @icon         https://www.google.com/s2/favicons?domain=twitter.com
+// @grant        unsafeWindow
+// ==/UserScript==
+
 /*
  TweetXer
 
@@ -13,8 +24,8 @@
  5. Use the file picker to select your tweets.js
  6. Wait a long time for all your Tweets to vanish
 
- If the process is interrupted at any time, you can enter how many Tweets have been deleted in the previous run to not start at zero again. 
- 
+ If the process is interrupted at any time, you can enter how many Tweets have been deleted in the previous run to not start at zero again.
+
  # How it works
  Never use something like this from an untrusted source. The script intercepts requests from your browser to Twitter and replaces the Tweet-IDs
  with IDs from your tweets.js file. This allows it to access the old Tweets and delete them.
@@ -147,7 +158,7 @@ var TweetsXer = {
         div.id = this.dId
         if (document.getElementById(this.dId))
             document.getElementById(this.dId).remove()
-        div.innerHTML = `<style>#${this.dId}{ z-index:99999; position: sticky; top:0px; left:0px; width:auto; margin:0 auto; padding: 20px 10%; background:#87CEFA; opacity:0.9; } #${this.dId} > *{padding:5px;}</style> 
+        div.innerHTML = `<style>#${this.dId}{ z-index:99999; position: sticky; top:0px; left:0px; width:auto; margin:0 auto; padding: 20px 10%; background:#87CEFA; opacity:0.9; } #${this.dId} > *{padding:5px;}</style>
         <div>
             <h2 class="${h2_class}" id="${this.dId}_title">TweetXer</h2>
             <p id="info">Enter how many Tweets to skip (useful for reruns) and select your tweets.js from your Twitter Data Export to start. </p>
@@ -209,5 +220,10 @@ var TweetsXer = {
     },
 
 }
+
+window.addEventListener('load', function () {
+    // necessary when used as a userscript
+    TweetsXer.init()
+}, false)
 
 TweetsXer.init()
