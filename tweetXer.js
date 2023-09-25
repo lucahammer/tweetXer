@@ -2,7 +2,7 @@
 // @name         TweetXer
 // @namespace    https://gist.github.com/lucahammer/a4d1e957ec9e061e3cccafcbed599e16/
 // @version      0.1
-// @description  Allows you to delete all your Tweets for free.
+// @description  Delete all your Tweets for free.
 // @author       Luca
 // @match        https://twitter.com/*
 // @icon         https://www.google.com/s2/favicons?domain=twitter.com
