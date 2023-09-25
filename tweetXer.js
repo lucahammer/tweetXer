@@ -20,6 +20,7 @@
  with IDs from your tweets.js file. This allows it to access the old Tweets and delete them.
 
  XHR interception inspired by https://github.com/ttodua/Tamper-Request-Javascript-Tool
+ Faster deletion inspired by https://github.com/Lyfhael/DeleteTweets
 
  Copyright 2023 Nobody
  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -33,16 +34,16 @@ var TweetsXer = {
     tId: "",
     ratelimitreset: 0,
     more: '[data-testid="tweet"] [aria-label="More"][data-testid="caret"]',
-    skip: 640,
+    skip: 0,
     total: 0,
     dCount: 0,
     lastHeaders: {},
-    deleteURL: '',
-    detailURL: '',
+    deleteURL: 'https://twitter.com/i/api/graphql/VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
     username: '',
 
     init() {
         document.querySelector('header>div>div').setAttribute('class', '')
+        TweetsXer.username = document.location.href.split('/')[3]
         this.createUploadForm()
         this.waitForFile(this.dId)
     },
@@ -85,54 +86,10 @@ var TweetsXer = {
 
             var XHR_OpenOriginal = XMLHttpRequest.prototype.open
             XMLHttpRequest.prototype.open = function () {
-                if (arguments[1] && arguments[1].includes("focalTweetId")) {
-                    // GET /TweetDetail?
-                    TweetsXer.tId = TweetsXer.tIds.pop()
-                    arguments[1] = arguments[1].replace(
-                        /focalTweetId%22%3A%22\d+/,
-                        `focalTweetId%22%3A%22${TweetsXer.tId}`
-                    )
-                    TweetsXer.detailURL = arguments[1]
-                }
                 if (arguments[1] && arguments[1].includes("DeleteTweet")) {
                     // POST /DeleteTweet
                     TweetsXer.deleteURL = arguments[1]
                 }
-                this.addEventListener(
-                    "readystatechange",
-                    // eslint-disable-next-line no-unused-vars
-                    function (event) {
-                        if (this.readyState == 4) {
-                            //console.log(this)
-                            if (
-                                this.statusText == "OK" &&
-                                this.responseURL.includes("/TweetDetail?") &&
-                                this.responseText.includes('No status found with that ID.')
-                            ) {
-                                // Tweet doesn't exist anymore
-                                TweetsXer.dCount++
-                                TweetsXer.updateProgressBar()
-                            }
-                            if (
-                                this.statusText != "OK" &&
-                                !this.responseURL.includes("/fleetline")
-                            ) {
-                                // Deletion failed
-                                TweetsXer.tIds.push(TweetsXer.tId)
-                                TweetsXer.ratelimitreset = this.getResponseHeader("x-rate-limit-reset")
-                            }
-                            if (
-                                this.statusText == "OK" &&
-                                this.responseURL.includes("/DeleteTweet")
-                            ) {
-                                // Tweet got deleted
-                                TweetsXer.dCount++
-                                TweetsXer.updateProgressBar()
-                            }
-                        }
-                    },
-                    false
-                )
                 XHR_OpenOriginal.apply(this, arguments)
             }
 
@@ -146,6 +103,7 @@ var TweetsXer = {
 
     updateProgressBar() {
         document.getElementById('progressbar').setAttribute('value', this.dCount)
+        document.getElementById("info").textContent = `${this.dCount} Tweets deleted`
     },
 
     async waitForFile(dId) {
@@ -176,7 +134,6 @@ var TweetsXer = {
                         .querySelector('[data-testid="AppTabBar_Profile_Link"]')
                         .click()
                     TweetsXer.initXHR()
-                    TweetsXer.deleteTweets()
                 }
                 fr.readAsText(tn.files[0])
             }
@@ -210,84 +167,8 @@ var TweetsXer = {
         document.getElementById(this.dId).appendChild(progressbar)
     },
 
-    async deleteTweets() {
-        document.getElementById("info").textContent = `${this.dCount} Tweets deleted`
-        if (window.location.href.includes("/status/")) {
-            TweetsXer.username = document.location.href.split('/')[3]
-            await this.sleep(1200)
-            while (document.querySelectorAll(this.more).length > 0) {
-                // hide recommended profiles and stuff
-                document
-                    .querySelectorAll(
-                        '[aria-label="Profile timelines"]+section [data-testid="cellInnerDiv"]>div>div>div'
-                    )
-                    .forEach((x) => x.remove())
-                document
-                    .querySelectorAll(
-                        '[aria-label="Profile timelines"]+section [data-testid="cellInnerDiv"]>div>div>[role="link"]'
-                    )
-                    .forEach((x) => x.remove())
-
-                // if it is a Fav, unfav it (only works if script is executed on Likes tab)
-                let unfav = document.querySelector('[data-testid="unlike"]')
-                if (unfav) {
-                    unfav.click()
-                    document.querySelector('[data-testid="tweet"]').remove()
-                }
-
-                // if it is a Retweet, unretweet it
-                let unretweet = document.querySelector('[data-testid="unretweet"]')
-                if (unretweet) {
-                    unretweet.click()
-                    let confirmURT = await this.waitForElemToExist(
-                        '[data-testid="unretweetConfirm"]'
-                    )
-                    confirmURT.click()
-                }
-
-                // delete Tweet
-                else {
-                    let caret = await this.waitForElemToExist(this.more)
-                    caret.click()
-                    let menu = await this.waitForElemToExist('[role="menuitem"]')
-                    if (menu.textContent.includes("@")) {
-                        // don't unfollow people (because their Tweet is the reply tab)
-                        caret.click()
-                        document.querySelector('[data-testid="tweet"]').remove()
-                    } else {
-                        menu.click()
-                        let confirmation = document.querySelector(
-                            '[data-testid="confirmationSheetConfirm"]'
-                        )
-                        if (confirmation) confirmation.click()
-                    }
-                }
-            }
-            document.querySelector('[data-testid="AppTabBar_Profile_Link"]').click()
-        } else {
-            await this.waitForElemToExist('[aria-label="Profile timelines"]')
-            let tweet = await this.waitForElemToExist('[data-testid="tweet"]')
-            tweet.click()
-        }
-
-        let sleeptime = TweetsXer.ratelimitreset - Math.round(Date.now() / 1000)
-        if (sleeptime > 0) {
-            while (sleeptime > 0) {
-                document.getElementById("info").textContent = `Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} Tweets deleted.`
-                await this.sleep(1000)
-                sleeptime = TweetsXer.ratelimitreset - Math.round(Date.now() / 1000)
-            }
-            document.querySelector('[data-testid="AppTabBar_Profile_Link"]').click()
-            await this.sleep(1000)
-        }
-        if (this.deleteURL == '') { this.deleteTweets() } else { this.rawDelete() }
-    },
-
-    rawDelete() {
+    deleteTweet() {
         this.tId = this.tIds.pop()
-        TweetsXer.dCount++
-        TweetsXer.updateProgressBar()
-
         fetch(this.deleteURL, {
             "headers": {
                 "accept": "*/*",
@@ -312,7 +193,13 @@ var TweetsXer = {
             "credentials": "include"
         }).then((data) => {
             if (data.status == 200) {
-                TweetsXer.rawDelete()
+                TweetsXer.dCount++
+                TweetsXer.updateProgressBar()
+                TweetsXer.deleteTweet()
+            }
+            else {
+                console.log(data)
+
             }
         })
 
