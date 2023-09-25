@@ -172,47 +172,42 @@ var TweetsXer = {
         while (!('authorization' in this.lastHeaders)) {
             await this.sleep(2000)
         }
-        this.deleteTweet()
-    },
-
-    deleteTweet() {
-        this.tId = this.tIds.pop()
-        fetch(this.deleteURL, {
-            "headers": {
-                "accept": "*/*",
-                "accept-language": 'en-US,en;q=0.5',
-                "authorization": this.lastHeaders.authorization,
-                "content-type": "application/json",
-                "sec-fetch-dest": "empty",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-origin",
-                "x-client-transaction-id": this.lastHeaders['X-Client-Transaction-Id'],
-                "x-client-uuid": this.lastHeaders['x-client-uuid'],
-                "x-csrf-token": this.lastHeaders['x-csrf-token'],
-                "x-twitter-active-user": "yes",
-                "x-twitter-auth-type": "OAuth2Session",
-                "x-twitter-client-language": 'en'
-            },
-            "referrer": `https://twitter.com/${this.username}/with_replies`,
-            "referrerPolicy": "strict-origin-when-cross-origin",
-            "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\",\"dark_request\":false},\"queryId\":\"${this.deleteURL.split('/')[6]}\"}`,
-            "method": "POST",
-            "mode": "cors",
-            "credentials": "include"
-        }).then((data) => {
-            if (data.status == 200) {
+        while (this.tIds.length > 0) {
+            this.tId = this.tIds.pop()
+            let response = await fetch(this.deleteURL, {
+                "headers": {
+                    "accept": "*/*",
+                    "accept-language": 'en-US,en;q=0.5',
+                    "authorization": this.lastHeaders.authorization,
+                    "content-type": "application/json",
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-origin",
+                    "x-client-transaction-id": this.lastHeaders['X-Client-Transaction-Id'],
+                    "x-client-uuid": this.lastHeaders['x-client-uuid'],
+                    "x-csrf-token": this.lastHeaders['x-csrf-token'],
+                    "x-twitter-active-user": "yes",
+                    "x-twitter-auth-type": "OAuth2Session",
+                    "x-twitter-client-language": 'en'
+                },
+                "referrer": `https://twitter.com/${this.username}/with_replies`,
+                "referrerPolicy": "strict-origin-when-cross-origin",
+                "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\",\"dark_request\":false},\"queryId\":\"${this.deleteURL.split('/')[6]}\"}`,
+                "method": "POST",
+                "mode": "cors",
+                "credentials": "include"
+            })
+            if (response.status == 200) {
                 TweetsXer.dCount++
                 TweetsXer.updateProgressBar()
-                TweetsXer.deleteTweet()
             }
             else {
-                console.log(data)
+                console.log(response)
 
             }
-        })
+        }
+    },
 
-
-    }
 }
 
 TweetsXer.init()
