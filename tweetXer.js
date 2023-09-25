@@ -134,6 +134,7 @@ var TweetsXer = {
                         .querySelector('[data-testid="AppTabBar_Profile_Link"]')
                         .click()
                     TweetsXer.initXHR()
+                    TweetsXer.deleteTweets()
                 }
                 fr.readAsText(tn.files[0])
             }
@@ -165,6 +166,13 @@ var TweetsXer = {
         progressbar.setAttribute('max', this.total)
         progressbar.setAttribute('style', 'width:100%')
         document.getElementById(this.dId).appendChild(progressbar)
+    },
+
+    async deleteTweets() {
+        while (!('authorization' in this.lastHeaders)) {
+            await this.sleep(2000)
+        }
+        this.deleteTweet()
     },
 
     deleteTweet() {
