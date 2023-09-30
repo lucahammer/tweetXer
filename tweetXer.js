@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://gist.github.com/lucahammer/a4d1e957ec9e061e3cccafcbed599e16/
-// @version      0.1
+// @version      0.3
 // @description  Delete all your Tweets for free.
 // @author       Luca
 // @match        https://twitter.com/*
@@ -50,13 +50,15 @@ var TweetsXer = {
     dCount: 0,
     lastHeaders: {},
     deleteURL: 'https://twitter.com/i/api/graphql/VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
+    unfavURL: 'https://twitter.com/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
     username: '',
+    action: '',
 
     init() {
-        document.querySelector('header>div>div').setAttribute('class', '')
+        // document.querySelector('header>div>div').setAttribute('class', '')
         TweetsXer.username = document.location.href.split('/')[3]
         this.createUploadForm()
-        this.waitForFile(this.dId)
+        TweetsXer.initXHR()
     },
 
     sleep(ms) {
@@ -114,41 +116,83 @@ var TweetsXer = {
 
     updateProgressBar() {
         document.getElementById('progressbar').setAttribute('value', this.dCount)
-        document.getElementById("info").textContent = `${this.dCount} Tweets deleted`
+        document.getElementById("info").textContent = `${this.dCount} deleted`
     },
 
-    async waitForFile(dId) {
+    processFile() {
         let file = false
-        while (file == false) {
-            console.log("waiting for tweets.js from your data export")
-            await TweetsXer.sleep(2000)
-            let tn = document.getElementById(`${dId}_file`)
-            if (tn.files && tn.files[0]) {
-                file = true
-                let fr = new FileReader()
-                fr.onloadend = function (evt) {
-                    TweetsXer.skip = document.getElementById('skipCount').value
-                    console.log(`Skipping oldest ${TweetsXer.skip} Tweets`)
-                    let json = JSON.parse(evt.target.result.slice(26)) //24 chars was valid around year 2020
+        let tn = document.getElementById(`${TweetsXer.dId}_file`)
+        if (tn.files && tn.files[0]) {
+            file = true
+            let fr = new FileReader()
+            fr.onloadend = function (evt) {
+                TweetsXer.skip = document.getElementById('skipCount').value
+                console.log(`Skipping oldest ${TweetsXer.skip} Tweets`)
+
+                // window.YTD.tweet_headers.part0
+                // window.YTD.tweets.part0
+                // window.YTD.like.part0
+                let cutpoint = evt.target.result.indexOf('= ')
+                let filestart = evt.target.result.slice(0, cutpoint)
+                let json = JSON.parse(evt.target.result.slice(cutpoint + 1))
+
+                if (filestart.includes('.tweet_headers.')) {
+                    console.log('File contains Tweets.')
+                    TweetsXer.action = 'untweet'
+                    TweetsXer.tIds = json.map((x) => x.tweet.tweet_id)
+                }
+                else if (filestart.includes('.tweets.')) {
+                    console.log('File contains Tweets.')
+                    TweetsXer.action = 'untweet'
                     TweetsXer.tIds = json.map((x) => x.tweet.id_str)
-                    TweetsXer.total = TweetsXer.tIds.length
+                }
+                else if (filestart.includes('.like.')) {
+                    console.log('File contains Favs.')
+                    TweetsXer.action = 'unfav'
+                    TweetsXer.tIds = json.map((x) => x.like.tweetId)
+                }
+                else {
+                    console.log('File contain not recognized. Please use a file from the Twitter data export.')
+                }
+
+                document
+                    .querySelector('[data-testid="AppTabBar_Profile_Link"]')
+                    .click()
+
+                TweetsXer.total = TweetsXer.tIds.length
+                document.getElementById('start').remove()
+                TweetsXer.createProgressBar()
+
+                if (TweetsXer.action == 'untweet') {
                     TweetsXer.tIds.reverse()
                     TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
                     TweetsXer.dCount = TweetsXer.skip
                     TweetsXer.tIds.reverse()
-                    document.getElementById('start').remove()
                     document.getElementById(
-                        `${dId}_title`
+                        `${TweetsXer.dId}_title`
                     ).textContent = `Deleting ${TweetsXer.total} Tweets`
-                    TweetsXer.createProgressBar()
-                    document
-                        .querySelector('[data-testid="AppTabBar_Profile_Link"]')
-                        .click()
-                    TweetsXer.initXHR()
+
                     TweetsXer.deleteTweets()
                 }
-                fr.readAsText(tn.files[0])
+
+                else if (TweetsXer.action == 'unfav') {
+                    TweetsXer.tIds.reverse()
+                    document.getElementById(
+                        `${TweetsXer.dId}_title`
+                    ).textContent = `Deleting ${TweetsXer.total} Favs`
+                    TweetsXer.deleteFavs()
+                }
+
+                else {
+                    document.getElementById(
+                        `${TweetsXer.dId}_title`
+                    ).textContent = `Please try a different file`
+                }
+
+
+
             }
+            fr.readAsText(tn.files[0])
         }
     },
 
@@ -161,13 +205,21 @@ var TweetsXer = {
         div.innerHTML = `<style>#${this.dId}{ z-index:99999; position: sticky; top:0px; left:0px; width:auto; margin:0 auto; padding: 20px 10%; background:#87CEFA; opacity:0.9; } #${this.dId} > *{padding:5px;}</style>
         <div>
             <h2 class="${h2_class}" id="${this.dId}_title">TweetXer</h2>
-            <p id="info">Enter how many Tweets to skip (useful for reruns) and select your tweets.js from your Twitter Data Export to start. </p>
+            <p id="info">Select your tweet-headers.js from your Twitter Data Export to start the deletion of all your Tweets. </p>
         <p id="start">
-          <input id="skipCount" type="number" value="0" />
           <input type="file" value="" id="${this.dId}_file"  />
+          <a href="#" id="toggleAdvanced">Advanced Options</a>
+          <div id="advanced" style="display:none">
+          <label for="skipCount">Enter how many Tweets to skip (useful for reruns) before selecting a file.</label>
+          <input id="skipCount" type="number" value="0" />
+          <p>To delete your Favs (aka Likes), select your like.js file.</p>
+          <p>Instead of your tweet-headers.js file, you can use the tweets.js file. Unfaving is limited to 500 unfavs per 15 minutes.</p>
+          </div>
         </p>
         </div>`
         document.body.insertBefore(div, document.body.firstChild)
+        document.getElementById("toggleAdvanced").addEventListener("click", (() => { let adv = document.getElementById('advanced'); if (adv.style.display == 'none') { adv.style.display = 'block' } else { adv.style.display = 'none' } }));
+        document.getElementById(`${this.dId}_file`).addEventListener("change", this.processFile, false)
     },
 
     createProgressBar() {
@@ -179,10 +231,68 @@ var TweetsXer = {
         document.getElementById(this.dId).appendChild(progressbar)
     },
 
+    async deleteFavs() {
+        // 500 unfavs per 15 Minutes
+        // x-rate-limit-remaining
+        // x-rate-limit-reset
+        while (!('authorization' in this.lastHeaders)) {
+            await this.sleep(1000)
+        }
+        TweetsXer.username = document.location.href.split('/')[3]
+
+        while (this.tIds.length > 0) {
+            this.tId = this.tIds.pop()
+            let response = await fetch(this.unfavURL, {
+                "headers": {
+                    "accept": "*/*",
+                    "accept-language": 'en-US,en;q=0.5',
+                    "authorization": this.lastHeaders.authorization,
+                    "content-type": "application/json",
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-origin",
+                    "x-client-transaction-id": this.lastHeaders['X-Client-Transaction-Id'],
+                    "x-client-uuid": this.lastHeaders['x-client-uuid'],
+                    "x-csrf-token": this.lastHeaders['x-csrf-token'],
+                    "x-twitter-active-user": "yes",
+                    "x-twitter-auth-type": "OAuth2Session",
+                    "x-twitter-client-language": 'en'
+                },
+                "referrer": `https://twitter.com/${this.username}/likes`,
+                "referrerPolicy": "strict-origin-when-cross-origin",
+                "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\"},\"queryId\":\"${this.unfavURL.split('/')[6]}\"}`,
+                "method": "POST",
+                "mode": "cors",
+                "credentials": "include"
+            })
+
+            if (response.status == 200) {
+                TweetsXer.dCount++
+                TweetsXer.updateProgressBar()
+            }
+            else {
+                console.log(response)
+            }
+
+            if (response.headers.get('x-rate-limit-remaining') < 1) {
+                console.log('rate limit hit')
+                let ratelimitreset = response.headers.get('x-rate-limit-reset')
+                let sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
+                while (sleeptime > 0) {
+                    sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
+                    document.getElementById("info").textContent = `Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`
+                    await this.sleep(1000)
+                }
+            }
+        }
+    },
+
     async deleteTweets() {
         while (!('authorization' in this.lastHeaders)) {
-            await this.sleep(2000)
+            await this.sleep(1000)
         }
+        TweetsXer.username = document.location.href.split('/')[3]
+
         while (this.tIds.length > 0) {
             this.tId = this.tIds.pop()
             let response = await fetch(this.deleteURL, {
@@ -214,7 +324,6 @@ var TweetsXer = {
             }
             else {
                 console.log(response)
-
             }
         }
     },
