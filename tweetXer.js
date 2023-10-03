@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://gist.github.com/lucahammer/a4d1e957ec9e061e3cccafcbed599e16/
-// @version      0.3
+// @version      0.4
 // @description  Delete all your Tweets for free.
 // @author       Luca
 // @match        https://twitter.com/*
@@ -16,12 +16,11 @@
  Because this automates the deletion, it may get your account banned. Not that bad. Copies of your Tweets may still exist on backups and so on.
 
  # Usage
- 0. Log into your Twitter account
- 1. You must have at least one visible Tweet on your profile. Post a new one, if there isn't one.
+ 1. Log into your Twitter account
  2. Open the browser console (F12)
  3. Paste the whole script into the console and press enter
  4. A light blue bar appears at the top of the window
- 5. Use the file picker to select your tweets.js
+ 5. Use the file picker to select your tweet-headers.js or tweets.js file
  6. Wait a long time for all your Tweets to vanish
 
  If the process is interrupted at any time, you can enter how many Tweets have been deleted in the previous run to not start at zero again.
@@ -141,7 +140,7 @@ var TweetsXer = {
                     TweetsXer.action = 'untweet'
                     TweetsXer.tIds = json.map((x) => x.tweet.tweet_id)
                 }
-                else if (filestart.includes('.tweets.')) {
+                else if (filestart.includes('.tweets.') || filestart.includes('.tweet.')) {
                     console.log('File contains Tweets.')
                     TweetsXer.action = 'untweet'
                     TweetsXer.tIds = json.map((x) => x.tweet.id_str)
