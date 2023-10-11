@@ -269,8 +269,9 @@ var TweetsXer = {
             if (response.status == 200) {
                 let data = await response.json();
                 data.data.bookmark_timeline_v2.timeline.instructions[0].entries.forEach((item) => {
-                    TweetsXer.dCount++
+                    
                     if (item.entryId.includes('tweet')) {
+                        TweetsXer.dCount++
                         TweetsXer.bookmarks.push(item.content.itemContent.tweet_results.result)
                     }
                     else if (item.entryId.includes('cursor-bottom')) {
