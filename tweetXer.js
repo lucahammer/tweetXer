@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://gist.github.com/lucahammer/a4d1e957ec9e061e3cccafcbed599e16/
-// @version      0.4
+// @version      0.5
 // @description  Delete all your Tweets for free.
 // @author       Luca
 // @match        https://twitter.com/*
@@ -52,6 +52,9 @@ var TweetsXer = {
     unfavURL: 'https://twitter.com/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
     username: '',
     action: '',
+    bookmarksURL: 'https://twitter.com/i/api/graphql/sLg287PtRrRWcUciNGFufQ/Bookmarks?',
+    bookmarks: [],
+    bookmarksNext: '',
 
     init() {
         // document.querySelector('header>div>div').setAttribute('class', '')
@@ -119,10 +122,8 @@ var TweetsXer = {
     },
 
     processFile() {
-        let file = false
         let tn = document.getElementById(`${TweetsXer.dId}_file`)
         if (tn.files && tn.files[0]) {
-            file = true
             let fr = new FileReader()
             fr.onloadend = function (evt) {
                 TweetsXer.skip = document.getElementById('skipCount').value
@@ -175,6 +176,8 @@ var TweetsXer = {
                 }
 
                 else if (TweetsXer.action == 'unfav') {
+                    TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
+                    TweetsXer.dCount = TweetsXer.skip
                     TweetsXer.tIds.reverse()
                     document.getElementById(
                         `${TweetsXer.dId}_title`
@@ -211,14 +214,96 @@ var TweetsXer = {
           <div id="advanced" style="display:none">
           <label for="skipCount">Enter how many Tweets to skip (useful for reruns) before selecting a file.</label>
           <input id="skipCount" type="number" value="0" />
+          
           <p>To delete your Favs (aka Likes), select your like.js file.</p>
           <p>Instead of your tweet-headers.js file, you can use the tweets.js file. Unfaving is limited to 500 unfavs per 15 minutes.</p>
+          <input id="exportBookmarks" type="button" value="Export Bookmarks" />
           </div>
         </p>
         </div>`
         document.body.insertBefore(div, document.body.firstChild)
         document.getElementById("toggleAdvanced").addEventListener("click", (() => { let adv = document.getElementById('advanced'); if (adv.style.display == 'none') { adv.style.display = 'block' } else { adv.style.display = 'none' } }));
-        document.getElementById(`${this.dId}_file`).addEventListener("change", this.processFile, false)
+        document.getElementById(`${this.dId}_file`).addEventListener("change", this.processFile, false);
+        document.getElementById("exportBookmarks").addEventListener("click", this.exportBookmarks, false);
+
+    },
+
+    async exportBookmarks() {
+        //document.getElementById('exportBookmarks').remove()
+        //TweetsXer.createProgressBar()
+        while (!('authorization' in TweetsXer.lastHeaders)) {
+            await TweetsXer.sleep(1000)
+        }
+        let variables = ''
+        while (TweetsXer.bookmarksNext.length > 0 || TweetsXer.bookmarks.length == 0) {
+            if (TweetsXer.bookmarksNext.length > 0) {
+                variables = `{"count":20,"cursor":"${TweetsXer.bookmarksNext}","includePromotedContent":true}`
+            }
+            else variables = '{"count":20,"includePromotedContent":false}'
+            let response = await fetch(TweetsXer.bookmarksURL + new URLSearchParams({
+                variables: variables,
+                features: '{"graphql_timeline_v2_bookmark_timeline":true,"responsive_web_graphql_exclude_directive_enabled":true,"verified_phone_label_enabled":false,"responsive_web_home_pinned_timelines_enabled":true,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"tweetypie_unmention_optimization_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":false,"tweet_awards_web_tipping_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_media_download_video_enabled":false,"responsive_web_enhance_cards_enabled":false}'
+            }), {
+                "headers": {
+                    "accept": "*/*",
+                    "accept-language": 'en-US,en;q=0.5',
+                    "authorization": TweetsXer.lastHeaders.authorization,
+                    "content-type": "application/json",
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-origin",
+                    "x-client-transaction-id": TweetsXer.lastHeaders['X-Client-Transaction-Id'],
+                    "x-client-uuid": TweetsXer.lastHeaders['x-client-uuid'],
+                    "x-csrf-token": TweetsXer.lastHeaders['x-csrf-token'],
+                    "x-twitter-active-user": "yes",
+                    "x-twitter-auth-type": "OAuth2Session",
+                    "x-twitter-client-language": 'en'
+                },
+                "referrer": 'https://twitter.com/i/bookmarks',
+                "referrerPolicy": "strict-origin-when-cross-origin",
+                "method": "GET",
+                "mode": "cors",
+                "credentials": "include"
+            })
+
+            if (response.status == 200) {
+                let data = await response.json();
+                data.data.bookmark_timeline_v2.timeline.instructions[0].entries.forEach((item) => {
+                    TweetsXer.dCount++
+                    if (item.entryId.includes('tweet')) {
+                        TweetsXer.bookmarks.push(item.content.itemContent.tweet_results.result)
+                    }
+                    else if (item.entryId.includes('cursor-bottom')) {
+                        if (TweetsXer.bookmarksNext != item.content.value) { TweetsXer.bookmarksNext = item.content.value }
+                        else { TweetsXer.bookmarksNext = '' }
+                    }
+                })
+                console.log(TweetsXer.bookmarks)
+                //document.getElementById('progressbar').setAttribute('value', TweetsXer.dCount)
+                document.getElementById("info").textContent = `${TweetsXer.dCount} Bookmarks collected`
+            }
+            else {
+                console.log(response)
+            }
+
+            if (response.headers.get('x-rate-limit-remaining') < 1) {
+                console.log('rate limit hit')
+                let ratelimitreset = response.headers.get('x-rate-limit-reset')
+                let sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
+                while (sleeptime > 0) {
+                    sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
+                    document.getElementById("info").textContent = `Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`
+                    await TweetsXer.sleep(1000)
+                }
+            }
+        }
+        let download = new Blob([JSON.stringify(TweetsXer.bookmarks)], { type: 'text/plain' });
+        let bookmarksDownload = document.createElement("a")
+        bookmarksDownload.id = 'bookmarksDownload'
+        bookmarksDownload.innerText = 'Download'
+        bookmarksDownload.href = window.URL.createObjectURL(download);
+        bookmarksDownload.download = 'twitter-bookmarks.json';
+        document.getElementById('advanced').appendChild(bookmarksDownload)
     },
 
     createProgressBar() {
