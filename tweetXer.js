@@ -10,28 +10,6 @@
 // ==/UserScript==
 
 /*
- TweetXer
-
- You can use this script to delete all your Tweets. Even if they don't show up on your profile. But you need your Data Export for it to work.
- Because this automates the deletion, it may get your account banned. Not that bad. Copies of your Tweets may still exist on backups and so on.
-
- # Usage
- 1. Log into your Twitter account
- 2. Open the browser console (F12)
- 3. Paste the whole script into the console and press enter
- 4. A light blue bar appears at the top of the window
- 5. Use the file picker to select your tweet-headers.js or tweets.js file
- 6. Wait a long time for all your Tweets to vanish
-
- If the process is interrupted at any time, you can enter how many Tweets have been deleted in the previous run to not start at zero again.
-
- # How it works
- Never use something like this from an untrusted source. The script intercepts requests from your browser to Twitter and replaces the Tweet-IDs
- with IDs from your tweets.js file. This allows it to access the old Tweets and delete them.
-
- XHR interception inspired by https://github.com/ttodua/Tamper-Request-Javascript-Tool
- Faster deletion inspired by https://github.com/Lyfhael/DeleteTweets
-
  Copyright 2023 Nobody
  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
