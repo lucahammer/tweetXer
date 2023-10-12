@@ -5,6 +5,7 @@ Because this automates the deletion, it may get your account banned. Not that ba
 
 # Video tutorial 
 English: https://www.youtube.com/watch?v=jB1-z6LbX5w 
+
 German: https://www.youtube.com/watch?v=HmQ7_ZgVNxg
 
  # Usage
@@ -22,9 +23,9 @@ German: https://www.youtube.com/watch?v=HmQ7_ZgVNxg
  with IDs from your tweets.js file. This allows it to access the old Tweets and delete them.
 
  XHR interception inspired by https://github.com/ttodua/Tamper-Request-Javascript-Tool
+ 
  Faster deletion inspired by https://github.com/Lyfhael/DeleteTweets
 
-X all your Tweets for free. Video tutorial: https://www.youtube.com/watch?v=jB1-z6LbX5w (German: https://www.youtube.com/watch?v=HmQ7_ZgVNxg) 
 
 # Bonus: Export your bookmarks
 Because bookmarks aren't included in the Twitter data export, there is a button under advanced options to export them.
