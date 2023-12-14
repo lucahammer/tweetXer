@@ -11,12 +11,14 @@ German: https://www.youtube.com/watch?v=HmQ7_ZgVNxg
  # Usage
  1. Log into your Twitter account
  2. Open the browser console (F12)
- 3. Paste the whole script into the console and press enter
+ 3. Paste the [whole script](https://raw.githubusercontent.com/lucahammer/tweetXer/main/tweetXer.js) into the console and press enter
  4. A light blue bar appears at the top of the window
  5. Use the file picker to select your tweet-headers.js or tweets.js file
  6. Wait for all your Tweets to vanish (about 5 Tweets per second)
 
  If the process is interrupted at any time, you can use the advanced options to enter how many Tweets have been deleted in the previous run to not start at zero again.
+
+ https://github.com/lucahammer/tweetXer/blob/954d82702e84631ab7b2349550dae100a5327193/tweetXer.js#L1-L401
 
  # How it works
  Never use something like this from an untrusted source. The script intercepts requests from your browser to Twitter and replaces the Tweet-IDs
