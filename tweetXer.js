@@ -177,7 +177,7 @@ var TweetsXer = {
     },
 
     createUploadForm() {
-        var h2_class = document.querySelectorAll("h2")[1].getAttribute("class")
+        var h2_class = document.querySelectorAll("h2")[1]?.getAttribute("class") || ""
         var div = document.createElement("div")
         div.id = this.dId
         if (document.getElementById(this.dId))
