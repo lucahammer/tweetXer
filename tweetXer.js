@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         TweetXer
-// @namespace    https://gist.github.com/lucahammer/a4d1e957ec9e061e3cccafcbed599e16/
-// @version      0.5
+// @namespace    https://github.com/lucahammer/tweetXer/
+// @version      0.5.1
 // @description  Delete all your Tweets for free.
 // @author       Luca
-// @match        https://twitter.com/*
+// @match        https://x.com/*
 // @icon         https://www.google.com/s2/favicons?domain=twitter.com
 // @grant        unsafeWindow
 // ==/UserScript==
@@ -237,7 +237,7 @@ var TweetsXer = {
                     "x-twitter-auth-type": "OAuth2Session",
                     "x-twitter-client-language": 'en'
                 },
-                "referrer": 'https://twitter.com/i/bookmarks',
+                "referrer": 'https://x.com/i/bookmarks',
                 "referrerPolicy": "strict-origin-when-cross-origin",
                 "method": "GET",
                 "mode": "cors",
@@ -321,7 +321,7 @@ var TweetsXer = {
                     "x-twitter-auth-type": "OAuth2Session",
                     "x-twitter-client-language": 'en'
                 },
-                "referrer": `https://twitter.com/${this.username}/likes`,
+                "referrer": `https://x.com/${this.username}/likes`,
                 "referrerPolicy": "strict-origin-when-cross-origin",
                 "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\"},\"queryId\":\"${this.unfavURL.split('/')[6]}\"}`,
                 "method": "POST",
@@ -374,7 +374,7 @@ var TweetsXer = {
                     "x-twitter-auth-type": "OAuth2Session",
                     "x-twitter-client-language": 'en'
                 },
-                "referrer": `https://twitter.com/${this.username}/with_replies`,
+                "referrer": `https://x.com/${this.username}/with_replies`,
                 "referrerPolicy": "strict-origin-when-cross-origin",
                 "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\",\"dark_request\":false},\"queryId\":\"${this.deleteURL.split('/')[6]}\"}`,
                 "method": "POST",
