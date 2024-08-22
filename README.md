@@ -18,7 +18,7 @@ German: https://www.youtube.com/watch?v=HmQ7_ZgVNxg
 
  If the process is interrupted at any time, you can use the advanced options to enter how many Tweets have been deleted in the previous run to not start at zero again.
 
- https://github.com/lucahammer/tweetXer/blob/main/tweetXer.js#L1-L401
+ https://github.com/lucahammer/tweetXer/blob/12dbb999fe35cb1e678b87a3d19b9c6ae43e8a4d/tweetXer.js#L1-L401
 
  # How it works
  Never use something like this from an untrusted source. The script intercepts requests from your browser to Twitter and replaces the Tweet-IDs
