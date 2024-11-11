@@ -24,7 +24,7 @@ German: [youtube.com/watch?v=HmQ7_ZgVNxg](https://www.youtube.com/watch?v=HmQ7_Z
  https://github.com/lucahammer/tweetXer/blob/66d0a0f188afb72e445c5157670d604b25f962c3/tweetXer.js#L1-L532
 
  # Alternative to copy & paste: userscript
- Instead of copy-pasting the script, you can install it as a userscript: https://greasyfork.org/en/scripts/476062-tweetxer (works with eg. tampermonkey browser extension https://addons.mozilla.org/firefox/addon/tampermonkey/)
+ Instead of copy-pasting the script, you can install it as a userscript: [greasyfork.org/en/scripts/476062-tweetxer](https://greasyfork.org/en/scripts/476062-tweetxer) (works with eg. [tampermonkey browser addon](https://addons.mozilla.org/firefox/addon/tampermonkey/))
 
  The userscript works on smartphones as well. Android only. 1. Install [Firefox Mobile](https://www.mozilla.org/firefox/browsers/mobile/), 2. Install the [Tampermonkey addon](https://addons.mozilla.org/firefox/addon/tampermonkey/), 3. install the [script from greasyfork](https://greasyfork.org/en/scripts/476062-tweetxer). Open X com and the blue bar should show up. You may need to uninstall the X-App before.
  
