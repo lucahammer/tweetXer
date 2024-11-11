@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.6.2
+// @version      0.6.3
 // @description  Delete all your Tweets for free.
 // @author       Luca
 // @match        https://x.com/*
@@ -365,7 +365,13 @@ var TweetsXer = {
             if (response.status == 200) {
                 TweetsXer.dCount++
                 TweetsXer.updateProgressBar()
-            } else {
+            }
+            else if (response.status == 429) {
+                this.tIds.push(this.tId)
+                console.log('Received status code 429. Waiting for 1 second before trying again.')
+                await this.sleep(1000)
+            }
+            else {
                 console.log(response)
             }
         }
