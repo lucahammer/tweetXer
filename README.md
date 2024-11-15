@@ -1,6 +1,6 @@
 # tweetXer
 
-You can use [this script](https://github.com/lucahammer/tweetXer/blob/main/tweetXer.js) to delete all your Tweets. Even if they don't show up on your profile. But you need your Data Export for it to work.
+You can use [this script](https://raw.githubusercontent.com/lucahammer/tweetXer/refs/heads/main/tweetXer.js) to delete all your Tweets. Even if they don't show up on your profile. But you need your Data Export for it to work.
 Because this automates the deletion, it may get your account banned. Not that bad. Copies of your Tweets may still exist on backups and so on.
 
 # Video tutorial 
