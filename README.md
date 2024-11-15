@@ -53,6 +53,9 @@ If for some reason you can't use your data export or it missed some Tweets, you 
 Under "Advanced options" you can automatically unfollow everyone. You may need to rerun with some time in between because of rate limits.
 
 # Known issues and solutions
+- I can't paste the script.
+
+  Your browser tries to protect you from pasting some random script you found. Type "allow pasting" (Firefox) or "allow pasting" (Chrome) and hit enter to confirm that you know what you are doing.
 
 - X Corp doesn't send me my data export.
 
