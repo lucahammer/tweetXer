@@ -21,7 +21,7 @@ German: [youtube.com/watch?v=HmQ7_ZgVNxg](https://www.youtube.com/watch?v=HmQ7_Z
 
  If the process is interrupted at any time, you can use the advanced options to enter how many Tweets have been deleted in the previous run to not start at zero again.
 
- https://github.com/lucahammer/tweetXer/blob/d94d2db60cbaf1b0069c9b3a2b3a9e0b47b23827/tweetXer.js#L1-L555
+ https://github.com/lucahammer/tweetXer/blob/1f43409f4f5717c41255494e53ccfc8123cf4b66/tweetXer.js#L1-L549
 
  # Alternative to copy & paste: userscript
  Instead of copy-pasting the script, you can install it as a userscript: [greasyfork.org/en/scripts/476062-tweetxer](https://greasyfork.org/en/scripts/476062-tweetxer) (works with eg. [tampermonkey browser addon](https://addons.mozilla.org/firefox/addon/tampermonkey/))
