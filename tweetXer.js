@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.6.4
+// @version      0.6.5
 // @description  Delete all your Tweets for free.
 // @author       Luca
 // @match        https://x.com/*
@@ -42,6 +42,8 @@ var TweetsXer = {
         TweetsXer.initXHR()
         TweetsXer.getTweetCount()
         this.sleep(200)
+        console.log("You can close the browser console now to reduce the memory usage.")
+        console.log("Reopen the console if there are issues to see if an error shows up.")
     },
 
     sleep(ms) {
@@ -181,6 +183,11 @@ var TweetsXer = {
             This option is much slower and less reliable. It can remove at most 4000 Tweets per hour.<br>
             <input id="slowDelete" type="button" value="Slow delete without file" />
           </p>
+
+          <p><strong>Unfollow everyone</strong><br>
+            It's time to let go. This will unfollow everyone you follow.<br>
+            <input id="unfollowEveryone" type="button" value="Unfollow everyone" />
+          </p>
           </div>
         </p>
         </div>`
@@ -196,6 +203,7 @@ var TweetsXer = {
         document.getElementById(`${this.dId}_file`).addEventListener("change", this.processFile, false)
         document.getElementById("exportBookmarks").addEventListener("click", this.exportBookmarks, false)
         document.getElementById("slowDelete").addEventListener("click", this.slowDelete, false)
+        document.getElementById("unfollowEveryone").addEventListener("click", this.unfollow, false)
 
     },
 
@@ -417,7 +425,6 @@ var TweetsXer = {
                 .replace('K', '000')
                 .replace(',', '')
         }
-        console.log(TweetsXer.TweetCount)
     },
 
     async slowDelete() {
@@ -480,6 +487,31 @@ var TweetsXer = {
         }
 
         console.log('No Tweets left. Please reload to confirm.')
+    },
+
+    async unfollow() {
+        let unfollowCount = 0
+
+        document.querySelector('[href$="/following"]').click()
+        await TweetsXer.sleep(1200)
+
+        const unfollow_buttons = '[data-testid="UserCell"] [data-testid$="-unfollow"]'
+        while (document.querySelectorAll(unfollow_buttons).length > 0) {
+            next_unfollow = document.querySelectorAll(unfollow_buttons)[0]
+            next_unfollow.scrollIntoView({
+                'behavior': 'smooth'
+            })
+
+            next_unfollow.click()
+            menu = await waitForElemToExist('[data-testid="confirmationSheetConfirm"]')
+            menu.click()
+            next_unfollow.remove()
+            unfollowCount++
+            if (unfollowCount % 10 == 0) console.log(`${new Date().toUTCString()} Unfollowed ${unfollowCount} accounts`)
+            await TweetsXer.sleep(Math.floor(Math.random() * 200))
+        }
+
+        console.log('No accounts left. Please reload to confirm.')
     }
 }
 
