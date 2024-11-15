@@ -17,6 +17,7 @@
 
 var TweetsXer = {
     allowed_requests: [],
+    TweetCount: 0,
     dId: "exportUpload",
     tIds: [],
     tId: "",
@@ -39,6 +40,8 @@ var TweetsXer = {
         TweetsXer.username = document.location.href.split('/')[3]
         this.createUploadForm()
         TweetsXer.initXHR()
+        TweetsXer.getTweetCount()
+        this.sleep(200)
     },
 
     sleep(ms) {
@@ -84,9 +87,6 @@ var TweetsXer = {
         if (tn.files && tn.files[0]) {
             let fr = new FileReader()
             fr.onloadend = function (evt) {
-                TweetsXer.skip = document.getElementById('skipCount').value
-                console.log(`Skipping oldest ${TweetsXer.skip} Tweets`)
-
                 // window.YTD.tweet_headers.part0
                 // window.YTD.tweets.part0
                 // window.YTD.like.part0
@@ -115,7 +115,18 @@ var TweetsXer = {
                 document.getElementById('start').remove()
                 TweetsXer.createProgressBar()
 
+                TweetsXer.skip = document.getElementById('skipCount').value
+
+
                 if (TweetsXer.action == 'untweet') {
+                    if (TweetsXer.skip == 0) {
+                        // If there is no amount set to skip, automatically try to skip the amount
+                        // that has been deleted already. Difference of Tweeets in file to count on profile
+                        // 5% tolerance to prevent skipping too much
+                        TweetsXer.skip = TweetsXer.total - TweetsXer.TweetCount - parseInt(TweetsXer.total / 20)
+                        TweetsXer.skip = Math.max(0, TweetsXer.skip)
+                    }
+                    console.log(`Skipping oldest ${TweetsXer.skip} Tweets`)
                     TweetsXer.tIds.reverse()
                     TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
                     TweetsXer.dCount = TweetsXer.skip
@@ -126,6 +137,7 @@ var TweetsXer = {
 
                     TweetsXer.deleteTweets()
                 } else if (TweetsXer.action == 'unfav') {
+                    console.log(`Skipping oldest ${TweetsXer.skip} Tweets`)
                     TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
                     TweetsXer.dCount = TweetsXer.skip
                     TweetsXer.tIds.reverse()
@@ -138,6 +150,7 @@ var TweetsXer = {
                         `${TweetsXer.dId}_title`
                     ).textContent = `Please try a different file`
                 }
+
             }
             fr.readAsText(tn.files[0])
         }
@@ -377,13 +390,7 @@ var TweetsXer = {
         }
     },
 
-    async slowDelete() {
-        document.getElementById("toggleAdvanced").click()
-        document.getElementById('start').remove()
-        TweetsXer.createProgressBar()
-
-        await TweetsXer.sleep(200)
-
+    async getTweetCount() {
         try {
             document.querySelector('[aria-label="Profile"]').click()
         } catch (error) {
@@ -398,18 +405,28 @@ var TweetsXer = {
         await TweetsXer.sleep(2000)
 
         try {
-            TweetsXer.total = document.querySelector('[aria-label="Home timeline"]>div>div')
+            TweetsXer.TweetCount = document.querySelector('[aria-label="Home timeline"]>div>div')
                 .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
                 .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                 .replace('K', '000')
                 .replace(',', '')
         } catch (error) {
-            TweetsXer.total = document.querySelector('[data-testid="TopNavBar"]>div>div')
+            TweetsXer.TweetCount = document.querySelector('[data-testid="TopNavBar"]>div>div')
                 .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
                 .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                 .replace('K', '000')
                 .replace(',', '')
         }
+        console.log(TweetsXer.TweetCount)
+    },
+
+    async slowDelete() {
+        document.getElementById("toggleAdvanced").click()
+        document.getElementById('start').remove()
+        TweetsXer.total = TweetsXer.TweetCount
+        TweetsXer.createProgressBar()
+
+        await TweetsXer.sleep(200)
 
         let unretweet, confirmURT, caret, menu, confirmation
 
