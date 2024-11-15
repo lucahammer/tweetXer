@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.6.5
+// @version      0.6.6
 // @description  Delete all your Tweets for free.
 // @author       Luca
 // @match        https://x.com/*
@@ -503,14 +503,14 @@ var TweetsXer = {
         document.querySelector('[href$="/following"]').click()
         await TweetsXer.sleep(1200)
 
-        const unfollow_buttons = '[data-testid="UserCell"] [data-testid$="-unfollow"]'
-        while (document.querySelectorAll(unfollow_buttons).length > 0) {
-            next_unfollow = document.querySelectorAll(unfollow_buttons)[0]
+        const accounts = '[data-testid="UserCell"]'
+        while (document.querySelectorAll('[data-testid="UserCell"] [data-testid$="-unfollow"]').length > 0) {
+            next_unfollow = document.querySelectorAll(accounts)[0]
             next_unfollow.scrollIntoView({
                 'behavior': 'smooth'
             })
 
-            next_unfollow.click()
+            next_unfollow.querySelector('[data-testid$="-unfollow"]').click()
             menu = await waitForElemToExist('[data-testid="confirmationSheetConfirm"]')
             menu.click()
             next_unfollow.remove()
