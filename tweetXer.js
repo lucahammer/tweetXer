@@ -42,8 +42,6 @@ var TweetsXer = {
         TweetsXer.initXHR()
         TweetsXer.getTweetCount()
         this.sleep(200)
-        console.log("You can close the browser console now to reduce the memory usage.")
-        console.log("Reopen the console if there are issues to see if an error shows up.")
     },
 
     sleep(ms) {
@@ -188,7 +186,8 @@ var TweetsXer = {
             It's time to let go. This will unfollow everyone you follow.<br>
             <input id="unfollowEveryone" type="button" value="Unfollow everyone" />
           </p>
-          </div>
+        <p><input id="removeTweetXer" type="button" value="Remove TweetXer" /></p>
+        </div>
         </p>
         </div>`
         document.body.insertBefore(div, document.body.firstChild)
@@ -204,6 +203,7 @@ var TweetsXer = {
         document.getElementById("exportBookmarks").addEventListener("click", this.exportBookmarks, false)
         document.getElementById("slowDelete").addEventListener("click", this.slowDelete, false)
         document.getElementById("unfollowEveryone").addEventListener("click", this.unfollow, false)
+        document.getElementById("removeTweetXer").addEventListener("click", this.removeTweetXer, false)
 
     },
 
@@ -399,18 +399,26 @@ var TweetsXer = {
     },
 
     async getTweetCount() {
+        await waitForElemToExist('header')
+        await TweetsXer.sleep(1000)
         try {
-            document.querySelector('[aria-label="Profile"]').click()
+            document.querySelector('[data-testid="AppTabBar_Profile_Link"]').click()
         } catch (error) {
-            document.querySelector('[data-testid="AppTabBar_Home_Link"]').click()
-            await TweetsXer.sleep(500)
+            if (document.querySelector('[aria-label="Back"]')) {
+                document.querySelector('[aria-label="Back"]').click()
+                await TweetsXer.sleep(1000)
+            }
+
+            if (document.querySelector('[data-testid="app-bar-back"]')) {
+                document.querySelector('[data-testid="app-bar-back"]').click()
+                await TweetsXer.sleep(1000)
+            }
             document.querySelector('[data-testid="DashButton_ProfileIcon_Link"]').click()
-            await TweetsXer.sleep(500)
+            await TweetsXer.sleep(1000)
             document.querySelector('[aria-label="Account"] a').click()
         }
-        await TweetsXer.sleep(2000)
-        document.querySelectorAll('[data-testid="ScrollSnap-List"] a')[1].click()
-        await TweetsXer.sleep(2000)
+        await waitForElemToExist('[data-testid="UserName"]')
+        await TweetsXer.sleep(500)
 
         try {
             TweetsXer.TweetCount = document.querySelector('[aria-label="Home timeline"]>div>div')
@@ -425,6 +433,9 @@ var TweetsXer = {
                 .replace('K', '000')
                 .replace(',', '')
         }
+        console.log(TweetsXer.TweetCount + " Tweets on profile.")
+        console.log("You can close the console now to reduce the memory usage.")
+        console.log("Reopen the console if there are issues to see if an error shows up.")
     },
 
     async slowDelete() {
@@ -433,7 +444,8 @@ var TweetsXer = {
         TweetsXer.total = TweetsXer.TweetCount
         TweetsXer.createProgressBar()
 
-        await TweetsXer.sleep(200)
+        document.querySelectorAll('[data-testid="ScrollSnap-List"] a')[1].click()
+        await TweetsXer.sleep(2000)
 
         let unretweet, confirmURT, caret, menu, confirmation
 
@@ -490,7 +502,9 @@ var TweetsXer = {
     },
 
     async unfollow() {
+        //document.getElementById("toggleAdvanced").click()
         let unfollowCount = 0
+        let next_unfollow, menu
 
         document.querySelector('[href$="/following"]').click()
         await TweetsXer.sleep(1200)
@@ -512,33 +526,11 @@ var TweetsXer = {
         }
 
         console.log('No accounts left. Please reload to confirm.')
+    },
+    removeTweetXer() {
+        document.getElementById('exportUpload').remove()
     }
 }
-
-window.addEventListener('load', function () {
-    // necessary when used as a userscript
-    const waitForElemToExist = async (selector) => {
-        return new Promise(resolve => {
-            if (document.querySelector(selector)) {
-                return resolve(document.querySelector(selector))
-            }
-
-            const observer = new MutationObserver(() => {
-                if (document.querySelector(selector)) {
-                    resolve(document.querySelector(selector))
-                    observer.disconnect()
-                }
-            })
-
-            observer.observe(document.body, {
-                subtree: true,
-                childList: true,
-            })
-        })
-    }
-
-    TweetsXer.init()
-}, false)
 
 const waitForElemToExist = async (selector) => {
     return new Promise(resolve => {
