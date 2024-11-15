@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.6.3
+// @version      0.6.4
 // @description  Delete all your Tweets for free.
 // @author       Luca
 // @match        https://x.com/*
@@ -281,7 +281,7 @@ var TweetsXer = {
         // x-rate-limit-remaining
         // x-rate-limit-reset
         while (!('authorization' in this.lastHeaders)) {
-            await this.sleep(1000)
+            await TweetsXer.sleep(1000)
         }
         TweetsXer.username = document.location.href.split('/')[3]
 
@@ -325,7 +325,7 @@ var TweetsXer = {
                 while (sleeptime > 0) {
                     sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
                     document.getElementById("info").textContent = `Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`
-                    await this.sleep(1000)
+                    await TweetsXer.sleep(1000)
                 }
             }
         }
@@ -333,7 +333,7 @@ var TweetsXer = {
 
     async deleteTweets() {
         while (!('authorization' in this.lastHeaders)) {
-            await this.sleep(1000)
+            await TweetsXer.sleep(1000)
         }
         TweetsXer.username = document.location.href.split('/')[3]
 
@@ -369,7 +369,7 @@ var TweetsXer = {
             else if (response.status == 429) {
                 this.tIds.push(this.tId)
                 console.log('Received status code 429. Waiting for 1 second before trying again.')
-                await this.sleep(1000)
+                await TweetsXer.sleep(1000)
             }
             else {
                 console.log(response)
@@ -377,109 +377,92 @@ var TweetsXer = {
         }
     },
 
-    slowDelete() {
-        const deleteTweets = async () => {
-            document.getElementById("toggleAdvanced").click()
-            document.getElementById('start').remove()
-            TweetsXer.createProgressBar()
+    async slowDelete() {
+        document.getElementById("toggleAdvanced").click()
+        document.getElementById('start').remove()
+        TweetsXer.createProgressBar()
 
-            await new Promise(r => setTimeout(r, 200))
+        await TweetsXer.sleep(200)
 
-            try {
-                document.querySelector('[aria-label="Profile"]').click()
-            } catch (error) {
-                document.querySelector('[data-testid="AppTabBar_Home_Link"]').click()
-                await new Promise(r => setTimeout(r, 500))
-                document.querySelector('[data-testid="DashButton_ProfileIcon_Link"]').click()
-                await new Promise(r => setTimeout(r, 500))
-                document.querySelector('[aria-label="Account"] a').click()
+        try {
+            document.querySelector('[aria-label="Profile"]').click()
+        } catch (error) {
+            document.querySelector('[data-testid="AppTabBar_Home_Link"]').click()
+            await TweetsXer.sleep(500)
+            document.querySelector('[data-testid="DashButton_ProfileIcon_Link"]').click()
+            await TweetsXer.sleep(500)
+            document.querySelector('[aria-label="Account"] a').click()
+        }
+        await TweetsXer.sleep(2000)
+        document.querySelectorAll('[data-testid="ScrollSnap-List"] a')[1].click()
+        await TweetsXer.sleep(2000)
+
+        try {
+            TweetsXer.total = document.querySelector('[aria-label="Home timeline"]>div>div')
+                .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
+                .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
+                .replace('K', '000')
+                .replace(',', '')
+        } catch (error) {
+            TweetsXer.total = document.querySelector('[data-testid="TopNavBar"]>div>div')
+                .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
+                .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
+                .replace('K', '000')
+                .replace(',', '')
+        }
+
+        let unretweet, confirmURT, caret, menu, confirmation
+
+        const more = '[data-testid="tweet"] [aria-label="More"][data-testid="caret"]'
+        while (document.querySelectorAll(more).length > 0) {
+
+            // give the Tweets a chance to load; increase/decrease if necessary
+            // afaik the limit is 50 requests per minute
+            await TweetsXer.sleep(1200)
+
+            // hide recommended profiles and stuff
+            document.querySelectorAll('[aria-label="Profile timelines"]+section [data-testid="cellInnerDiv"]>div>div>div').forEach(x => x.remove())
+            document.querySelectorAll('[aria-label="Profile timelines"]+section [data-testid="cellInnerDiv"]>div>div>[role="link"]').forEach(x => x.remove())
+            document.querySelector('[aria-label="Profile timelines"]').scrollIntoView({
+                'behavior': 'smooth'
+            })
+
+            // if it is a Retweet, unretweet it
+            unretweet = document.querySelector('[data-testid="unretweet"]')
+            if (unretweet) {
+                unretweet.click()
+                confirmURT = await waitForElemToExist('[data-testid="unretweetConfirm"]')
+                confirmURT.click()
             }
-            await new Promise(r => setTimeout(r, 2000))
 
-            try {
-                TweetsXer.total = document.querySelector('[aria-label="Home timeline"]>div>div')
-                    .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
-                    .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
-                    .replace('K', '000')
-                    .replace(',', '')
-            } catch (error) {
-                TweetsXer.total = document.querySelector('[data-testid="TopNavBar"]>div>div')
-                    .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
-                    .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
-                    .replace('K', '000')
-                    .replace(',', '')
-            }
+            // delete Tweet
+            else {
+                caret = await waitForElemToExist(more)
+                caret.click()
 
-            let unretweet, confirmURT, caret, menu, confirmation
-
-            const more = '[data-testid="tweet"] [aria-label="More"][data-testid="caret"]'
-            while (document.querySelectorAll(more).length > 0) {
-
-                // give the Tweets a chance to load; increase/decrease if necessary
-                // afaik the limit is 50 requests per minute
-                await new Promise(r => setTimeout(r, 1200))
-
-                // hide recommended profiles and stuff
-                document.querySelectorAll('[aria-label="Profile timelines"]+section [data-testid="cellInnerDiv"]>div>div>div').forEach(x => x.remove())
-                document.querySelectorAll('[aria-label="Profile timelines"]+section [data-testid="cellInnerDiv"]>div>div>[role="link"]').forEach(x => x.remove())
-                document.querySelector('[aria-label="Profile timelines"]').scrollIntoView({
-                    'behavior': 'smooth'
-                })
-
-                // if it is a Retweet, unretweet it
-                unretweet = document.querySelector('[data-testid="unretweet"]')
-                if (unretweet) {
-                    unretweet.click()
-                    confirmURT = await waitForElemToExist('[data-testid="unretweetConfirm"]')
-                    confirmURT.click()
-                }
-
-                // delete Tweet
-                else {
-                    caret = await waitForElemToExist(more)
+                menu = await waitForElemToExist('[role="menuitem"]')
+                if (menu.textContent.includes('@')) {
+                    // don't unfollow people (because their Tweet is the reply tab)
                     caret.click()
-
-                    menu = await waitForElemToExist('[role="menuitem"]')
-                    if (menu.textContent.includes('@')) {
-                        // don't unfollow people (because their Tweet is the reply tab)
-                        caret.click()
-                        document.querySelector('[data-testid="tweet"]').remove()
-                    } else {
-                        menu.click()
-                        confirmation = await waitForElemToExist('[data-testid="confirmationSheetConfirm"]')
-                        if (confirmation) confirmation.click()
-                    }
-                }
-
-                TweetsXer.dCount++
-                TweetsXer.updateProgressBar()
-
-
-                // print to the console how many Tweets already got deleted
-                // Change the 10 to how often you want an update.
-                // 10 for every 10th Tweet, 1 for every Tweet, 100 for every 100th Tweet
-                if (TweetsXer.dCount % 100 == 0) console.log(`${new Date().toUTCString()} Deleted ${TweetsXer.dCount} Tweets`)
-
-            }
-
-            console.log('Switching to Replies.')
-            document.querySelectorAll('[aria-label="Profile timelines"]>div>div>div>div>a')[1].click()
-            await new Promise(r => setTimeout(r, 2000))
-            if (document.querySelectorAll(more).length > 0) {
-                deleteTweets()
-            } else {
-                console.log('Switching to Tweets.')
-                document.querySelectorAll('[aria-label="Profile timelines"]>div>div>div>div>a')[0].click()
-                await new Promise(r => setTimeout(r, 2000))
-                if (document.querySelectorAll(more).length > 0) {
-                    deleteTweets()
+                    document.querySelector('[data-testid="tweet"]').remove()
+                } else {
+                    menu.click()
+                    confirmation = await waitForElemToExist('[data-testid="confirmationSheetConfirm"]')
+                    if (confirmation) confirmation.click()
                 }
             }
 
-            console.log('No Tweets left. Please reload to confirm.')
+            TweetsXer.dCount++
+            TweetsXer.updateProgressBar()
+
+            // print to the console how many Tweets already got deleted
+            // Change the 100 to how often you want an update.
+            // 10 for every 10th Tweet, 1 for every Tweet, 100 for every 100th Tweet
+            if (TweetsXer.dCount % 100 == 0) console.log(`${new Date().toUTCString()} Deleted ${TweetsXer.dCount} Tweets`)
 
         }
-        deleteTweets()
+
+        console.log('No Tweets left. Please reload to confirm.')
     }
 }
 
@@ -506,7 +489,6 @@ window.addEventListener('load', function () {
     }
 
     TweetsXer.init()
-    document.getElementById('exportUpload_title').removeAttribute('class')
 }, false)
 
 const waitForElemToExist = async (selector) => {
