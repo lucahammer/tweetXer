@@ -21,9 +21,7 @@ German: [youtube.com/watch?v=HmQ7_ZgVNxg](https://www.youtube.com/watch?v=HmQ7_Z
 5.  Use the file picker to select your tweet-headers.js or tweets.js file
 6.  Wait for all your Tweets to vanish (about 5-10 Tweets per second)
 
-If the process is interrupted at any time, you can use the advanced options to enter how many Tweets have been deleted in the previous run to not start at zero again.
-
-https://github.com/lucahammer/tweetXer/blob/1f43409f4f5717c41255494e53ccfc8123cf4b66/tweetXer.js#L1-L549
+If the process is interrupted at any time, you can use the advanced options to enter how many Tweets have been deleted in the previous run to not start at zero again. The script will try to automatically detect if it was run before by calcualting the difference between Tweets in the file and the Tweet count on the profile. If there is a difference it will try to automatically skip that amount (+5% buffer). If you want it to start from the beginning, open 'Advanced options' and enter 1 instead of 0. It will the skip exactly one Tweet and not try to calculate an amount.
 
 # Alternative to copy & paste: userscript
 
