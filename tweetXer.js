@@ -1,12 +1,16 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.6.7
+// @version      0.7.0
 // @description  Delete all your Tweets for free.
-// @author       Luca
+// @author       Luca,dbort,pReya,Micolithe,STrRedWolf
+// @license      NoHarm-draft
 // @match        https://x.com/*
 // @icon         https://www.google.com/s2/favicons?domain=twitter.com
 // @grant        unsafeWindow
+// @downloadURL  https://update.greasyfork.org/scripts/476062/TweetXer.user.js
+// @updateURL    https://update.greasyfork.org/scripts/476062/TweetXer.meta.js
+// @supportURL   https://github.com/lucahammer/tweetXer/issues
 // ==/UserScript==
 
 var TweetsXer = {
@@ -156,12 +160,12 @@ var TweetsXer = {
         div.id = this.dId
         if (document.getElementById(this.dId)) { document.getElementById(this.dId).remove() }
         div.innerHTML = `<style>#${this.dId}{ z-index:99999; position: sticky; top:0px; left:0px; width:auto; margin:0 auto; padding: 20px 10%; background:#87CEFA; opacity:0.9; } #${this.dId} > *{padding:5px;}</style>
-        <div>
+        <div style="color:black">
             <h2 class="${h2_class}" id="${this.dId}_title">TweetXer</h2>
             <p id="info">Select your tweet-headers.js from your Twitter Data Export to start the deletion of all your Tweets. </p>
         <p id="start">
           <input type="file" value="" id="${this.dId}_file"  />
-          <a href="#" id="toggleAdvanced">Advanced Options</a>
+          <a style="color:blue" href="#" id="toggleAdvanced">Advanced Options</a>
           <div id="advanced" style="display:none">
           <label for="skipCount">Enter how many Tweets to skip (useful for reruns) before selecting a file.</label>
           <input id="skipCount" type="number" value="0" />
@@ -354,40 +358,55 @@ var TweetsXer = {
 
         while (this.tIds.length > 0) {
             this.tId = this.tIds.pop()
-            let response = await fetch(this.deleteURL, {
-                "headers": {
-                    "accept": "*/*",
-                    "accept-language": 'en-US,en;q=0.5',
-                    "authorization": this.lastHeaders.authorization,
-                    "content-type": "application/json",
-                    "sec-fetch-dest": "empty",
-                    "sec-fetch-mode": "cors",
-                    "sec-fetch-site": "same-origin",
-                    "x-client-transaction-id": this.lastHeaders['X-Client-Transaction-Id'],
-                    "x-client-uuid": this.lastHeaders['x-client-uuid'],
-                    "x-csrf-token": this.lastHeaders['x-csrf-token'],
-                    "x-twitter-active-user": "yes",
-                    "x-twitter-auth-type": "OAuth2Session",
-                    "x-twitter-client-language": 'en'
-                },
-                "referrer": `https://x.com/${this.username}/with_replies`,
-                "referrerPolicy": "strict-origin-when-cross-origin",
-                "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\",\"dark_request\":false},\"queryId\":\"${this.deleteURL.split('/')[6]}\"}`,
-                "method": "POST",
-                "mode": "cors",
-                "credentials": "include"
-            })
-            if (response.status == 200) {
-                TweetsXer.dCount++
-                TweetsXer.updateProgressBar()
-            }
-            else if (response.status == 429) {
-                this.tIds.push(this.tId)
-                console.log('Received status code 429. Waiting for 1 second before trying again.')
-                await TweetsXer.sleep(1000)
-            }
-            else {
-                console.log(response)
+            try {
+                let response = await fetch(this.deleteURL, {
+                    "headers": {
+                        "accept": "*/*",
+                        "accept-language": 'en-US,en;q=0.5',
+                        "authorization": this.lastHeaders.authorization,
+                        "content-type": "application/json",
+                        "sec-fetch-dest": "empty",
+                        "sec-fetch-mode": "cors",
+                        "sec-fetch-site": "same-origin",
+                        "x-client-transaction-id": this.lastHeaders['X-Client-Transaction-Id'],
+                        "x-client-uuid": this.lastHeaders['x-client-uuid'],
+                        "x-csrf-token": this.lastHeaders['x-csrf-token'],
+                        "x-twitter-active-user": "yes",
+                        "x-twitter-auth-type": "OAuth2Session",
+                        "x-twitter-client-language": 'en'
+                    },
+                    "referrer": `https://x.com/${this.username}/with_replies`,
+                    "referrerPolicy": "strict-origin-when-cross-origin",
+                    "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\",\"dark_request\":false},\"queryId\":\"${this.deleteURL.split('/')[6]}\"}`,
+                    "method": "POST",
+                    "mode": "cors",
+                    "credentials": "include",
+                    "signal": AbortSignal.timeout(5000)
+                })
+                if (response.status == 200) {
+                    TweetsXer.dCount++
+                    TweetsXer.updateProgressBar()
+                }
+                else if (response.status == 429) {
+                    this.tIds.push(this.tId)
+                    console.log('Received status code 429. Waiting for 1 second before trying again.')
+                    await TweetsXer.sleep(1000)
+                }
+                else {
+                    console.log(response)
+                }
+
+            } catch (error) {
+                if (error.Name === 'AbortError') {
+                    this.tIds.push(this.tId)
+                    console.log('Request timeout.')
+                    let sleeptime = 15
+                    while (sleeptime > 0) {
+                        sleeptime--
+                        document.getElementById("info").textContent = `Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`
+                        await TweetsXer.sleep(1000)
+                    }
+                }
             }
         }
     },
@@ -415,7 +434,7 @@ var TweetsXer = {
         await TweetsXer.sleep(1000)
 
         try {
-            TweetsXer.TweetCount = document.querySelector('[aria-label="Home timelin e"]>div>div')
+            TweetsXer.TweetCount = document.querySelector('[aria-label="Home timeline"]>div>div')
                 .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
                 .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                 .replace('K', '000')
@@ -423,12 +442,12 @@ var TweetsXer = {
         } catch (error) {
             try {
                 TweetsXer.TweetCount = document.querySelector('[data-testid="TopNavBar"]>div>div')
-                .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
-                .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
-                .replace('K', '000')
-                .replace(',', '')
+                    .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
+                    .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
+                    .replace('K', '000')
+                    .replace(',', '')
             }
-            catch(error) {
+            catch (error) {
                 console.log("Wasn't able to find Tweet count on profile. Setting it to 1 million.")
                 TweetsXer.TweetCount = 1000000 // prevents Tweets from being skipped because of tweet count of 0
             }
