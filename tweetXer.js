@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.6.6
+// @version      0.6.7
 // @description  Delete all your Tweets for free.
 // @author       Luca
 // @match        https://x.com/*
@@ -412,20 +412,26 @@ var TweetsXer = {
             document.querySelector('[aria-label="Account"] a').click()
         }
         await waitForElemToExist('[data-testid="UserName"]')
-        await TweetsXer.sleep(500)
+        await TweetsXer.sleep(1000)
 
         try {
-            TweetsXer.TweetCount = document.querySelector('[aria-label="Home timeline"]>div>div')
+            TweetsXer.TweetCount = document.querySelector('[aria-label="Home timelin e"]>div>div')
                 .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
                 .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                 .replace('K', '000')
                 .replace(',', '')
         } catch (error) {
-            TweetsXer.TweetCount = document.querySelector('[data-testid="TopNavBar"]>div>div')
+            try {
+                TweetsXer.TweetCount = document.querySelector('[data-testid="TopNavBar"]>div>div')
                 .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
                 .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                 .replace('K', '000')
                 .replace(',', '')
+            }
+            catch(error) {
+                console.log("Wasn't able to find Tweet count on profile. Setting it to 1 million.")
+                TweetsXer.TweetCount = 1000000 // prevents Tweets from being skipped because of tweet count of 0
+            }
         }
         console.log(TweetsXer.TweetCount + " Tweets on profile.")
         console.log("You can close the console now to reduce the memory usage.")
