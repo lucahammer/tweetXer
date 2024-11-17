@@ -28,7 +28,7 @@ If the process is interrupted at any time, you can use the advanced options to e
 
 # Alternative to copy & paste: userscript
 
-Instead of copy-pasting the script, you can install it as a userscript: [greasyfork.org/en/scripts/476062-tweetxer](https://greasyfork.org/en/scripts/476062-tweetxer) (works with eg. [tampermonkey browser addon](https://addons.mozilla.org/firefox/addon/tampermonkey/))
+Instead of copy-pasting the script, you can install it as a userscript: [greasyfork.org/en/scripts/476062-tweetxer](https://greasyfork.org/en/scripts/476062-tweetxer) (works with eg. [Violentmonkey](https://addons.mozilla.org/firefox/addon/violentmonkey/), [FireMonkey](https://addons.mozilla.org/firefox/addon/firemonkey/) or [tampermonkey](https://addons.mozilla.org/firefox/addon/tampermonkey/) browser addon)
 
 The userscript works on smartphones as well. Android only. 1. Install [Firefox Mobile](https://www.mozilla.org/firefox/browsers/mobile/), 2. Install the [Tampermonkey addon](https://addons.mozilla.org/firefox/addon/tampermonkey/), 3. install the [script from greasyfork](https://greasyfork.org/en/scripts/476062-tweetxer). Open X com and the blue bar should show up. You may need to uninstall the X-App before.
 
