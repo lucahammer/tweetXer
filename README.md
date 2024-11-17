@@ -3,7 +3,10 @@
 You can use [this script](https://raw.githubusercontent.com/lucahammer/tweetXer/refs/heads/main/tweetXer.js) to delete all your Tweets. Even if they don't show up on your profile. But you need your Data Export for it to work.
 Because this automates the deletion, it may get your account banned. Not a bad outcome.
 
-# Video tutorial
+## Translations
+[Portuguese (Brazil)](https://github.com/arielgmelo/tweetXer-ptbr)
+
+## Video tutorial
 
 [![Youtube player preview showing a screenrecording: Left half is a firefox with twitter.com open and and open console. Right side is a code editor with bullet points and a person looking at the viewer with animated blue birds flying around their head.](https://img.youtube.com/vi/jB1-z6LbX5w/0.jpg)](https://www.youtube.com/watch?v=jB1-z6LbX5w)
 
