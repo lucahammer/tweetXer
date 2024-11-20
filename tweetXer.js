@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.7.0
+// @version      0.7.1
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
 // @match        https://x.com/*
+// @match        https://mobile.x.com/*
+// @match        https://twitter.com/*
+// @match        https://mobile.twitter.com/*
 // @icon         https://www.google.com/s2/favicons?domain=twitter.com
 // @grant        unsafeWindow
 // @downloadURL  https://update.greasyfork.org/scripts/476062/TweetXer.user.js
@@ -20,26 +23,27 @@ var TweetsXer = {
     tIds: [],
     tId: "",
     ratelimitreset: 0,
-    more: '[data-testid="tweet"] [aria-label="More"][data-testid="caret"]',
+    more: '[data-testid="tweet"] [data-testid="caret"]',
     skip: 0,
     total: 0,
     dCount: 0,
     lastHeaders: {},
-    deleteURL: 'https://x.com/i/api/graphql/VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
-    unfavURL: 'https://x.com/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
+    deleteURL: '/i/api/graphql/VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
+    unfavURL: '/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
     username: '',
     action: '',
-    bookmarksURL: 'https://x.com/i/api/graphql/sLg287PtRrRWcUciNGFufQ/Bookmarks?',
+    bookmarksURL: '/i/api/graphql/L7vvM2UluPgWOW4GDvWyvw/Bookmarks?',
     bookmarks: [],
     bookmarksNext: '',
+    baseUrl: 'https://x.com',
 
-    init() {
+    async init() {
         // document.querySelector('header>div>div').setAttribute('class', '')
-        TweetsXer.username = document.location.href.split('/')[3]
+        await TweetsXer.getTweetCount()
+        TweetsXer.baseUrl = window.location.hostname
+        TweetsXer.username = document.location.href.split('/')[3].replace('#', '')
         this.createUploadForm()
         TweetsXer.initXHR()
-        TweetsXer.getTweetCount()
-        this.sleep(200)
     },
 
     sleep(ms) {
@@ -206,8 +210,7 @@ var TweetsXer = {
     },
 
     async exportBookmarks() {
-        //document.getElementById('exportBookmarks').remove()
-        //TweetsXer.createProgressBar()
+        console.log('collectign bookmarks')
         while (!('authorization' in TweetsXer.lastHeaders)) {
             await TweetsXer.sleep(1000)
         }
@@ -216,7 +219,7 @@ var TweetsXer = {
             if (TweetsXer.bookmarksNext.length > 0) {
                 variables = `{"count":20,"cursor":"${TweetsXer.bookmarksNext}","includePromotedContent":true}`
             } else variables = '{"count":20,"includePromotedContent":false}'
-            let response = await fetch(TweetsXer.bookmarksURL + new URLSearchParams({
+            let response = await fetch(TweetsXer.baseUrl + TweetsXer.bookmarksURL + new URLSearchParams({
                 variables: variables,
                 features: '{"graphql_timeline_v2_bookmark_timeline":true,"responsive_web_graphql_exclude_directive_enabled":true,"verified_phone_label_enabled":false,"responsive_web_home_pinned_timelines_enabled":true,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"tweetypie_unmention_optimization_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":false,"tweet_awards_web_tipping_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_media_download_video_enabled":false,"responsive_web_enhance_cards_enabled":false}'
             }), {
@@ -235,7 +238,7 @@ var TweetsXer = {
                     "x-twitter-auth-type": "OAuth2Session",
                     "x-twitter-client-language": 'en'
                 },
-                "referrer": 'https://x.com/i/bookmarks',
+                "referrer": `${TweetsXer.baseUrl}/i/bookmarks`,
                 "referrerPolicy": "strict-origin-when-cross-origin",
                 "method": "GET",
                 "mode": "cors",
@@ -302,11 +305,10 @@ var TweetsXer = {
         while (!('authorization' in this.lastHeaders)) {
             await TweetsXer.sleep(1000)
         }
-        TweetsXer.username = document.location.href.split('/')[3]
 
         while (this.tIds.length > 0) {
             this.tId = this.tIds.pop()
-            let response = await fetch(this.unfavURL, {
+            let response = await fetch(this.baseUrl + this.unfavURL, {
                 "headers": {
                     "accept": "*/*",
                     "accept-language": 'en-US,en;q=0.5',
@@ -322,9 +324,9 @@ var TweetsXer = {
                     "x-twitter-auth-type": "OAuth2Session",
                     "x-twitter-client-language": 'en'
                 },
-                "referrer": `https://x.com/${this.username}/likes`,
+                "referrer": `${TweetsXer.baseUrl}/${this.username}/likes`,
                 "referrerPolicy": "strict-origin-when-cross-origin",
-                "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\"},\"queryId\":\"${this.unfavURL.split('/')[6]}\"}`,
+                "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\"},\"queryId\":\"${this.baseUrl + this.unfavURL.split('/')[6]}\"}`,
                 "method": "POST",
                 "mode": "cors",
                 "credentials": "include"
@@ -354,12 +356,11 @@ var TweetsXer = {
         while (!('authorization' in this.lastHeaders)) {
             await TweetsXer.sleep(1000)
         }
-        TweetsXer.username = document.location.href.split('/')[3]
 
         while (this.tIds.length > 0) {
             this.tId = this.tIds.pop()
             try {
-                let response = await fetch(this.deleteURL, {
+                let response = await fetch(this.baseUrl + this.deleteURL, {
                     "headers": {
                         "accept": "*/*",
                         "accept-language": 'en-US,en;q=0.5',
@@ -375,9 +376,9 @@ var TweetsXer = {
                         "x-twitter-auth-type": "OAuth2Session",
                         "x-twitter-client-language": 'en'
                     },
-                    "referrer": `https://x.com/${this.username}/with_replies`,
+                    "referrer": `${TweetsXer.baseUrl}/${this.username}/with_replies`,
                     "referrerPolicy": "strict-origin-when-cross-origin",
-                    "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\",\"dark_request\":false},\"queryId\":\"${this.deleteURL.split('/')[6]}\"}`,
+                    "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\",\"dark_request\":false},\"queryId\":\"${this.baseUrl + this.deleteURL.split('/')[6]}\"}`,
                     "method": "POST",
                     "mode": "cors",
                     "credentials": "include",
@@ -428,21 +429,21 @@ var TweetsXer = {
             }
             document.querySelector('[data-testid="DashButton_ProfileIcon_Link"]').click()
             await TweetsXer.sleep(1000)
-            document.querySelector('[aria-label="Account"] a').click()
+            document.querySelector('[data-testid="AppTabBar_Profile_Link"]').click()
         }
         await waitForElemToExist('[data-testid="UserName"]')
         await TweetsXer.sleep(1000)
 
         try {
-            TweetsXer.TweetCount = document.querySelector('[aria-label="Home timeline"]>div>div')
-                .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
+            TweetsXer.TweetCount = document.querySelector('[data-testid="primaryColumn"]>div>div>div')
+                .textContent.match(/((\d|,|\.|K)+) (\w+)$/)[1]
                 .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                 .replace('K', '000')
                 .replace(',', '')
         } catch (error) {
             try {
                 TweetsXer.TweetCount = document.querySelector('[data-testid="TopNavBar"]>div>div')
-                    .textContent.match(/((\d|,|\.|K)+) posts$/)[1]
+                    .textContent.match(/((\d|,|\.|K)+) (\w+)$/)[1]
                     .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                     .replace('K', '000')
                     .replace(',', '')
@@ -458,7 +459,7 @@ var TweetsXer = {
     },
 
     async slowDelete() {
-        document.getElementById("toggleAdvanced").click()
+        //document.getElementById("toggleAdvanced").click()
         document.getElementById('start').remove()
         TweetsXer.total = TweetsXer.TweetCount
         TweetsXer.createProgressBar()
@@ -468,7 +469,7 @@ var TweetsXer = {
 
         let unretweet, confirmURT, caret, menu, confirmation
 
-        const more = '[data-testid="tweet"] [aria-label="More"][data-testid="caret"]'
+        const more = '[data-testid="tweet"] [data-testid="caret"]'
         while (document.querySelectorAll(more).length > 0) {
 
             // give the Tweets a chance to load; increase/decrease if necessary
@@ -476,9 +477,9 @@ var TweetsXer = {
             await TweetsXer.sleep(1200)
 
             // hide recommended profiles and stuff
-            document.querySelectorAll('[aria-label="Profile timelines"]+section [data-testid="cellInnerDiv"]>div>div>div').forEach(x => x.remove())
-            document.querySelectorAll('[aria-label="Profile timelines"]+section [data-testid="cellInnerDiv"]>div>div>[role="link"]').forEach(x => x.remove())
-            document.querySelector('[aria-label="Profile timelines"]').scrollIntoView({
+            document.querySelectorAll('section [data-testid="cellInnerDiv"]>div>div>div').forEach(x => x.remove())
+            document.querySelectorAll('section [data-testid="cellInnerDiv"]>div>div>[role="link"]').forEach(x => x.remove())
+            document.querySelector(more).scrollIntoView({
                 'behavior': 'smooth'
             })
 
@@ -494,6 +495,7 @@ var TweetsXer = {
             else {
                 caret = await waitForElemToExist(more)
                 caret.click()
+
 
                 menu = await waitForElemToExist('[role="menuitem"]')
                 if (menu.textContent.includes('@')) {
