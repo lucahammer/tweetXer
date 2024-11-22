@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.7.3
+// @version      0.7.4
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -18,7 +18,6 @@
 
 (function () {
     var TweetsXer = {
-        allowed_requests: [],
         TweetCount: 0,
         dId: "exportUpload",
         tIds: [],
@@ -39,12 +38,11 @@
         baseUrl: 'https://x.com',
 
         async init() {
-            // document.querySelector('header>div>div').setAttribute('class', '')
-            TweetsXer.baseUrl = 'https://' + window.location.hostname
+            this.initXHR()
+            this.baseUrl = 'https://' + window.location.hostname
             this.createUploadForm()
-            await TweetsXer.getTweetCount()
-            TweetsXer.username = document.location.href.split('/')[3].replace('#', '')
-            TweetsXer.initXHR()
+            await this.getTweetCount()
+            this.username = document.location.href.split('/')[3].replace('#', '')
         },
 
         sleep(ms) {
@@ -57,22 +55,6 @@
             if (!AjaxMonitoring_notfired) {
                 AjaxMonitoring_notfired = true
 
-                /* NOTE: XMLHttpRequest actions happen in this sequence: at first "open"[readyState=1] happens, then "setRequestHeader", then "send", then "open"[readyState=2] */
-
-                var XHR_SendOriginal = XMLHttpRequest.prototype.send
-                XMLHttpRequest.prototype.send = function () {
-                    XHR_SendOriginal.apply(this, arguments)
-                }
-
-                var XHR_OpenOriginal = XMLHttpRequest.prototype.open
-                XMLHttpRequest.prototype.open = function () {
-                    if (arguments[1] && arguments[1].includes("DeleteTweet")) {
-                        // POST /DeleteTweet
-                        TweetsXer.deleteURL = arguments[1].replace(TweetsXer.baseUrl, '')
-                    }
-                    XHR_OpenOriginal.apply(this, arguments)
-                }
-
                 var XHR_SetRequestHeaderOriginal = XMLHttpRequest.prototype.setRequestHeader
                 XMLHttpRequest.prototype.setRequestHeader = function (a, b) {
                     TweetsXer.lastHeaders[a] = b
@@ -81,9 +63,26 @@
             }
         },
 
-        updateProgressBar() {
+        updateTitle(text) {
+            document.getElementById('tweetsXer_title').textContent = text
+        },
+
+        updateInfo(text) {
+            document.getElementById("info").textContent = text
+        },
+
+        createProgressBar() {
+            let progressbar = document.createElement("progress")
+            progressbar.setAttribute('id', "progressbar")
+            progressbar.setAttribute('value', this.dCount)
+            progressbar.setAttribute('max', this.total)
+            progressbar.setAttribute('style', 'width:100%')
+            document.getElementById(this.dId).appendChild(progressbar)
+        },
+
+        updateProgressBar(verb = 'deleted') {
             document.getElementById('progressbar').setAttribute('value', this.dCount)
-            document.getElementById("info").textContent = `${this.dCount} deleted`
+            this.updateInfo(`${this.dCount} ${verb}`)
         },
 
         processFile() {
@@ -111,16 +110,14 @@
                         TweetsXer.action = 'unfav'
                         TweetsXer.tIds = json.map((x) => x.like.tweetId)
                     } else {
-                        console.log('File contain not recognized. Please use a file from the Twitter data export.')
+                        console.log('File content not recognized. Please use a file from the Twitter data export.')
                     }
 
-
                     TweetsXer.total = TweetsXer.tIds.length
-                    document.getElementById('start').remove()
+                    document.getElementById(`${TweetsXer.dId}_file`).remove()
                     TweetsXer.createProgressBar()
 
                     TweetsXer.skip = document.getElementById('skipCount').value
-
 
                     if (TweetsXer.action == 'untweet') {
                         if (TweetsXer.skip == 0) {
@@ -130,14 +127,12 @@
                             TweetsXer.skip = TweetsXer.total - TweetsXer.TweetCount - parseInt(TweetsXer.total / 20)
                             TweetsXer.skip = Math.max(0, TweetsXer.skip)
                         }
-                        console.log(`Skipping oldest ${TweetsXer.skip} Tweets`)
+                        console.log(`Skipping oldest ${TweetsXer.skip} Tweets. Use advanced options to manually set how many to skip. Set 1 to prevent the automatic calculation.`)
                         TweetsXer.tIds.reverse()
                         TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
                         TweetsXer.dCount = TweetsXer.skip
                         TweetsXer.tIds.reverse()
-                        document.getElementById(
-                            `${TweetsXer.dId}_title`
-                        ).textContent = `Deleting ${TweetsXer.total} Tweets`
+                        TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} Tweets`)
 
                         TweetsXer.deleteTweets()
                     } else if (TweetsXer.action == 'unfav') {
@@ -145,14 +140,10 @@
                         TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
                         TweetsXer.dCount = TweetsXer.skip
                         TweetsXer.tIds.reverse()
-                        document.getElementById(
-                            `${TweetsXer.dId}_title`
-                        ).textContent = `Deleting ${TweetsXer.total} Favs`
+                        TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} Favs`)
                         TweetsXer.deleteFavs()
                     } else {
-                        document.getElementById(
-                            `${TweetsXer.dId}_title`
-                        ).textContent = `Please try a different file`
+                        TweetsXer.updateTitle(`TweetXer: Please try a different file`)
                     }
 
                 }
@@ -166,34 +157,34 @@
             div.id = this.dId
             if (document.getElementById(this.dId)) { document.getElementById(this.dId).remove() }
             div.innerHTML = `<style>#${this.dId}{ z-index:99999; position: sticky; top:0px; left:0px; width:auto; margin:0 auto; padding: 20px 10%; background:#87CEFA; opacity:0.9; } #${this.dId} > *{padding:5px;}</style>
-        <div style="color:black">
-            <h2 class="${h2_class}" id="${this.dId}_title">TweetXer</h2>
-            <p id="info">Select your tweet-headers.js from your Twitter Data Export to start the deletion of all your Tweets. </p>
-        <p id="start">
-          <input type="file" value="" id="${this.dId}_file"  />
-          <a style="color:blue" href="#" id="toggleAdvanced">Advanced Options</a>
-          <div id="advanced" style="display:none">
-          <label for="skipCount">Enter how many Tweets to skip (useful for reruns) before selecting a file.</label>
-          <input id="skipCount" type="number" value="0" />
-
-          <p>To delete your Favs (aka Likes), select your like.js file.</p>
-          <p>Instead of your tweet-headers.js file, you can use the tweets.js file. Unfaving is limited to 500 unfavs per 15 minutes.</p>
-          <input id="exportBookmarks" type="button" value="Export Bookmarks" />
-
-          <p><strong>No tweet-headers.js?</strong><br>
-            If you are unable to get your data export, you can use the following option.<br>
-            This option is much slower and less reliable. It can remove at most 4000 Tweets per hour.<br>
-            <input id="slowDelete" type="button" value="Slow delete without file" />
-          </p>
-
-          <p><strong>Unfollow everyone</strong><br>
-            It's time to let go. This will unfollow everyone you follow.<br>
-            <input id="unfollowEveryone" type="button" value="Unfollow everyone" />
-          </p>
-        <p><input id="removeTweetXer" type="button" value="Remove TweetXer" /></p>
-        </div>
-        </p>
-        </div>`
+                <div style="color:black">
+                    <h2 class="${h2_class}" id="tweetsXer_title">TweetXer</h2>
+                    <p id="info">Select your tweet-headers.js from your Twitter Data Export to start the deletion of all your Tweets. </p>
+                    <p id="start">
+                        <input type="file" value="" id="${this.dId}_file"  />
+                        <a style="color:blue" href="#" id="toggleAdvanced">Advanced Options</a>
+                    <div id="advanced" style="display:none">
+                        <label for="skipCount">Enter how many Tweets to skip before selecting a file. If 0, the script will try to automatically detect how many Tweets to skip by calcualting the difference between Tweets in the file and on the profile.</label>
+                        <input id="skipCount" type="number" value="0" />
+                        <p>To delete your Favs (aka Likes), select your like.js file. Unfaving is limited by X Corp to 500 unfavs per 15 minutes.</p>
+                        <p><strong>Export bookmarks</strong><br>
+                            Bookmarks are not included in the official data export. You can export them here.
+                            <input id="exportBookmarks" type="button" value="Export Bookmarks" />
+                        </p>
+                        <p><strong>No tweet-headers.js?</strong><br>
+                            If you are unable to get your data export, you can use the following option.<br>
+                            This option is much slower and less reliable. It can remove at most 4000 Tweets per hour.<br>
+                            <input id="slowDelete" type="button" value="Slow delete without file" />
+                        </p>
+                        <p><strong>Unfollow everyone</strong><br>
+                            It's time to let go. This will unfollow everyone you follow.<br>
+                            <input id="unfollowEveryone" type="button" value="Unfollow everyone" />
+                        </p>
+                        <p><a id="removeTweetXer" style="color:blue" href="#">Remove TweetXer</a></p>
+                    </div>
+                    </p>
+                </div>
+                `
             document.body.insertBefore(div, document.body.firstChild)
             document.getElementById("toggleAdvanced").addEventListener("click", (() => {
                 let adv = document.getElementById('advanced')
@@ -212,6 +203,7 @@
         },
 
         async exportBookmarks() {
+            TweetsXer.updateTitle('TweetXer: Exporting bookmarks')
             while (!('authorization' in TweetsXer.lastHeaders)) {
                 await TweetsXer.sleep(1000)
             }
@@ -262,7 +254,7 @@
                         }
                     })
                     //document.getElementById('progressbar').setAttribute('value', TweetsXer.dCount)
-                    document.getElementById("info").textContent = `${TweetsXer.dCount} Bookmarks collected`
+                    TweetsXer.updateInfo(`${TweetsXer.dCount} Bookmarks collected`)
                 } else {
                     console.log(response)
                 }
@@ -273,7 +265,7 @@
                     let sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
                     while (sleeptime > 0) {
                         sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
-                        document.getElementById("info").textContent = `Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`
+                        TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
                         await TweetsXer.sleep(1000)
                     }
                 }
@@ -283,22 +275,15 @@
             })
             let bookmarksDownload = document.createElement("a")
             bookmarksDownload.id = 'bookmarksDownload'
-            bookmarksDownload.innerText = 'Download'
+            bookmarksDownload.innerText = 'Download bookmarks'
             bookmarksDownload.href = window.URL.createObjectURL(download)
             bookmarksDownload.download = 'twitter-bookmarks.json'
             document.getElementById('advanced').appendChild(bookmarksDownload)
-        },
-
-        createProgressBar() {
-            let progressbar = document.createElement("progress")
-            progressbar.setAttribute('id', "progressbar")
-            progressbar.setAttribute('value', this.dCount)
-            progressbar.setAttribute('max', this.total)
-            progressbar.setAttribute('style', 'width:100%')
-            document.getElementById(this.dId).appendChild(progressbar)
+            TweetsXer.updateTitle('TweetXer')
         },
 
         async deleteFavs() {
+            TweetsXer.updateTitle('TweetXer: Deleting Favs')
             // 500 unfavs per 15 Minutes
             // x-rate-limit-remaining
             // x-rate-limit-reset
@@ -345,17 +330,18 @@
                     let sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
                     while (sleeptime > 0) {
                         sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
-                        document.getElementById("info").textContent = `Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`
+                        TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
                         await TweetsXer.sleep(1000)
                     }
                 }
             }
+            TweetsXer.updateTitle('TweetXer')
         },
 
         async deleteTweets() {
             while (!('authorization' in this.lastHeaders)) {
                 await TweetsXer.sleep(1000)
-                console.log('waiting for auth')
+                TweetsXer.updateInfo('Waiting for auth. If this takes more than 10 seconds, try a different browser or use "slow delete without file" under Advanced options.')
             }
 
             while (this.tIds.length > 0) {
@@ -405,7 +391,7 @@
                         let sleeptime = 15
                         while (sleeptime > 0) {
                             sleeptime--
-                            document.getElementById("info").textContent = `Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`
+                            TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
                             await TweetsXer.sleep(1000)
                         }
                     }
