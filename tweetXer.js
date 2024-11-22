@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.7.2
+// @version      0.7.3
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -10,7 +10,7 @@
 // @match        https://twitter.com/*
 // @match        https://mobile.twitter.com/*
 // @icon         https://www.google.com/s2/favicons?domain=twitter.com
-// @grant        unsafeWindow
+// @grant        none
 // @downloadURL  https://update.greasyfork.org/scripts/476062/TweetXer.user.js
 // @updateURL    https://update.greasyfork.org/scripts/476062/TweetXer.meta.js
 // @supportURL   https://github.com/lucahammer/tweetXer/issues
@@ -52,6 +52,7 @@
         },
 
         initXHR() {
+            console.log('init xhr')
             if (typeof AjaxMonitoring_notfired == "undefined") { var AjaxMonitoring_notfired = false }
             if (!AjaxMonitoring_notfired) {
                 AjaxMonitoring_notfired = true
@@ -211,7 +212,6 @@
         },
 
         async exportBookmarks() {
-            console.log('collectign bookmarks')
             while (!('authorization' in TweetsXer.lastHeaders)) {
                 await TweetsXer.sleep(1000)
             }
@@ -355,6 +355,7 @@
         async deleteTweets() {
             while (!('authorization' in this.lastHeaders)) {
                 await TweetsXer.sleep(1000)
+                console.log('waiting for auth')
             }
 
             while (this.tIds.length > 0) {
