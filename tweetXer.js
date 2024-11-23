@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.8.0
+// @version      0.8.1
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -11,6 +11,7 @@
 // @match        https://mobile.twitter.com/*
 // @icon         https://www.google.com/s2/favicons?domain=twitter.com
 // @grant        none
+// @run-at       document-idle
 // @downloadURL  https://update.greasyfork.org/scripts/476062/TweetXer.user.js
 // @updateURL    https://update.greasyfork.org/scripts/476062/TweetXer.meta.js
 // @supportURL   https://github.com/lucahammer/tweetXer/issues
@@ -18,6 +19,7 @@
 
 (function () {
     var TweetsXer = {
+        version: '0.8.1',
         TweetCount: 0,
         dId: "exportUpload",
         tIds: [],
@@ -41,11 +43,10 @@
 
         async init() {
             this.baseUrl = 'https://' + window.location.hostname
-            this.ct0 = this.getCookie('ct0')
             this.updateTransactionId()
             await this.getTweetCount()
+            this.ct0 = this.getCookie('ct0')
             this.username = document.location.href.split('/')[3].replace('#', '')
-            console.log(this.transaction_id)
         },
 
         sleep(ms) {
@@ -181,8 +182,8 @@
                             <input id="unfollowEveryone" type="button" value="Unfollow everyone" />
                         </p>
                         <p><a id="removeTweetXer" style="color:blue" href="#">Remove TweetXer</a></p>
+                        <p><small>${TweetsXer.version}</small></p>
                     </div>
-                    </p>
                 </div>
                 `
             document.body.insertBefore(div, document.body.firstChild)
@@ -370,23 +371,30 @@
         async getTweetCount() {
             await waitForElemToExist('header')
             await TweetsXer.sleep(1000)
-            try {
-                document.querySelector('[data-testid="AppTabBar_Profile_Link"]').click()
-            } catch (error) {
+            if (!document.querySelector('[data-testid="UserName"]')) {
                 if (document.querySelector('[aria-label="Back"]')) {
+                    await TweetsXer.sleep(200)
                     document.querySelector('[aria-label="Back"]').click()
                     await TweetsXer.sleep(1000)
                 }
-
-                if (document.querySelector('[data-testid="app-bar-back"]')) {
+                else if (document.querySelector('[data-testid="app-bar-back"]')) {
                     document.querySelector('[data-testid="app-bar-back"]').click()
                     await TweetsXer.sleep(1000)
                 }
-                document.querySelector('[data-testid="DashButton_ProfileIcon_Link"]').click()
-                await TweetsXer.sleep(1000)
-                document.querySelector('[data-testid="AppTabBar_Profile_Link"]').click()
+
+                if (document.querySelector('[data-testid="AppTabBar_Profile_Link"]')) {
+                    await TweetsXer.sleep(200)
+                    document.querySelector('[data-testid="AppTabBar_Profile_Link"]').click()
+                }
+                else if (document.querySelector('[data-testid="DashButton_ProfileIcon_Link"]')) {
+                    await TweetsXer.sleep(100)
+                    document.querySelector('[data-testid="DashButton_ProfileIcon_Link"]').click()
+                    await TweetsXer.sleep(1000)
+                    document.querySelector('[data-testid="icon"').nextElementSibling.click()
+                }
+
+                await waitForElemToExist('[data-testid="UserName"]')
             }
-            await waitForElemToExist('[data-testid="UserName"]')
             await TweetsXer.sleep(1000)
 
             try {
