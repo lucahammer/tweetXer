@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.7.4
+// @version      0.8.0
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -27,7 +27,6 @@
         skip: 0,
         total: 0,
         dCount: 0,
-        lastHeaders: {},
         deleteURL: '/i/api/graphql/VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
         unfavURL: '/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
         username: '',
@@ -36,31 +35,32 @@
         bookmarks: [],
         bookmarksNext: '',
         baseUrl: 'https://x.com',
+        authorization: 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
+        ct0: false,
+        transaction_id: '',
 
         async init() {
-            this.initXHR()
             this.baseUrl = 'https://' + window.location.hostname
-            this.createUploadForm()
+            this.ct0 = this.getCookie('ct0')
+            this.updateTransactionId()
             await this.getTweetCount()
             this.username = document.location.href.split('/')[3].replace('#', '')
+            console.log(this.transaction_id)
         },
 
         sleep(ms) {
             return new Promise((resolve) => setTimeout(resolve, ms))
         },
 
-        initXHR() {
-            console.log('init xhr')
-            if (typeof AjaxMonitoring_notfired == "undefined") { var AjaxMonitoring_notfired = false }
-            if (!AjaxMonitoring_notfired) {
-                AjaxMonitoring_notfired = true
+        getCookie(name) {
+            let a = `; ${document.cookie}`.match(`;\\s*${name}=([^;]+)`);
+            return a ? a[1] : false;
+        },
 
-                var XHR_SetRequestHeaderOriginal = XMLHttpRequest.prototype.setRequestHeader
-                XMLHttpRequest.prototype.setRequestHeader = function (a, b) {
-                    TweetsXer.lastHeaders[a] = b
-                    XHR_SetRequestHeaderOriginal.apply(this, arguments)
-                }
-            }
+        updateTransactionId() {
+            this.transaction_id = [...crypto.getRandomValues(new Uint8Array(95))]
+                .map((x, i) => (i = x / 255 * 61 | 0, String.fromCharCode(i + (i > 9 ? i > 35 ? 61 : 55 : 48)))).join``
+            this.createUploadForm()
         },
 
         updateTitle(text) {
@@ -127,7 +127,7 @@
                             TweetsXer.skip = TweetsXer.total - TweetsXer.TweetCount - parseInt(TweetsXer.total / 20)
                             TweetsXer.skip = Math.max(0, TweetsXer.skip)
                         }
-                        console.log(`Skipping oldest ${TweetsXer.skip} Tweets. Use advanced options to manually set how many to skip. Set 1 to prevent the automatic calculation.`)
+                        console.log(`Skipping oldest ${TweetsXer.skip} Tweets. Use advanced options to manually set how many to skip. Enter 1 to prevent the automatic calculation.`)
                         TweetsXer.tIds.reverse()
                         TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
                         TweetsXer.dCount = TweetsXer.skip
@@ -204,9 +204,6 @@
 
         async exportBookmarks() {
             TweetsXer.updateTitle('TweetXer: Exporting bookmarks')
-            while (!('authorization' in TweetsXer.lastHeaders)) {
-                await TweetsXer.sleep(1000)
-            }
             let variables = ''
             while (TweetsXer.bookmarksNext.length > 0 || TweetsXer.bookmarks.length == 0) {
                 if (TweetsXer.bookmarksNext.length > 0) {
@@ -217,19 +214,12 @@
                     features: '{"graphql_timeline_v2_bookmark_timeline":true,"rweb_tipjar_consumption_enabled":true,"responsive_web_graphql_exclude_directive_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"rweb_video_timestamps_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_enhance_cards_enabled":false}'
                 }), {
                     "headers": {
-                        "accept": "*/*",
-                        "accept-language": 'en-US,en;q=0.5',
-                        "authorization": TweetsXer.lastHeaders.authorization,
+                        "authorization": TweetsXer.authorization,
                         "content-type": "application/json",
-                        "sec-fetch-dest": "empty",
-                        "sec-fetch-mode": "cors",
-                        "sec-fetch-site": "same-origin",
-                        "x-client-transaction-id": TweetsXer.lastHeaders['X-Client-Transaction-Id'],
-                        "x-client-uuid": TweetsXer.lastHeaders['x-client-uuid'],
-                        "x-csrf-token": TweetsXer.lastHeaders['x-csrf-token'],
+                        "x-client-transaction-id": TweetsXer.transaction_id,
+                        "x-csrf-token": TweetsXer.ct0,
                         "x-twitter-active-user": "yes",
                         "x-twitter-auth-type": "OAuth2Session",
-                        "x-twitter-client-language": 'en'
                     },
                     "referrer": `${TweetsXer.baseUrl}/i/bookmarks`,
                     "referrerPolicy": "strict-origin-when-cross-origin",
@@ -287,27 +277,17 @@
             // 500 unfavs per 15 Minutes
             // x-rate-limit-remaining
             // x-rate-limit-reset
-            while (!('authorization' in this.lastHeaders)) {
-                await TweetsXer.sleep(1000)
-            }
 
             while (this.tIds.length > 0) {
                 this.tId = this.tIds.pop()
                 let response = await fetch(this.baseUrl + this.unfavURL, {
                     "headers": {
-                        "accept": "*/*",
-                        "accept-language": 'en-US,en;q=0.5',
-                        "authorization": this.lastHeaders.authorization,
+                        "authorization": this.authorization,
                         "content-type": "application/json",
-                        "sec-fetch-dest": "empty",
-                        "sec-fetch-mode": "cors",
-                        "sec-fetch-site": "same-origin",
-                        "x-client-transaction-id": this.lastHeaders['X-Client-Transaction-Id'],
-                        "x-client-uuid": this.lastHeaders['x-client-uuid'],
-                        "x-csrf-token": this.lastHeaders['x-csrf-token'],
+                        "x-client-transaction-id": this.transaction_id,
+                        "x-csrf-token": this.ct0,
                         "x-twitter-active-user": "yes",
                         "x-twitter-auth-type": "OAuth2Session",
-                        "x-twitter-client-language": 'en'
                     },
                     "referrer": `${TweetsXer.baseUrl}/${this.username}/likes`,
                     "referrerPolicy": "strict-origin-when-cross-origin",
@@ -339,29 +319,17 @@
         },
 
         async deleteTweets() {
-            while (!('authorization' in this.lastHeaders)) {
-                await TweetsXer.sleep(1000)
-                TweetsXer.updateInfo('Waiting for auth. If this takes more than 10 seconds, try a different browser or use "slow delete without file" under Advanced options.')
-            }
-
             while (this.tIds.length > 0) {
                 this.tId = this.tIds.pop()
                 try {
                     let response = await fetch(this.baseUrl + this.deleteURL, {
                         "headers": {
-                            "accept": "*/*",
-                            "accept-language": 'en-US,en;q=0.5',
-                            "authorization": this.lastHeaders.authorization,
+                            "authorization": this.authorization,
                             "content-type": "application/json",
-                            "sec-fetch-dest": "empty",
-                            "sec-fetch-mode": "cors",
-                            "sec-fetch-site": "same-origin",
-                            "x-client-transaction-id": this.lastHeaders['X-Client-Transaction-Id'],
-                            "x-client-uuid": this.lastHeaders['x-client-uuid'],
-                            "x-csrf-token": this.lastHeaders['x-csrf-token'],
+                            "x-client-transaction-id": this.transaction_id,
+                            "x-csrf-token": this.ct0,
                             "x-twitter-active-user": "yes",
-                            "x-twitter-auth-type": "OAuth2Session",
-                            "x-twitter-client-language": 'en'
+                            "x-twitter-auth-type": "OAuth2Session"
                         },
                         "referrer": `${TweetsXer.baseUrl}/${this.username}/with_replies`,
                         "referrerPolicy": "strict-origin-when-cross-origin",
