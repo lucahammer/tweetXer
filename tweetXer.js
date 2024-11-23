@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.8.1
+// @version      0.8.2
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -403,6 +403,7 @@
                     .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                     .replace('K', '000')
                     .replace(',', '')
+                    .replace('.', '')
             } catch (error) {
                 try {
                     TweetsXer.TweetCount = document.querySelector('[data-testid="TopNavBar"]>div>div')
@@ -410,6 +411,7 @@
                         .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                         .replace('K', '000')
                         .replace(',', '')
+                        .replace('.', '')
                 }
                 catch (error) {
                     console.log("Wasn't able to find Tweet count on profile. Setting it to 1 million.")
