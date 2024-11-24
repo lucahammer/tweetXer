@@ -1,4 +1,4 @@
-# tweetXer
+# tweetXer – eXterminate your Tweets
 
 You can use [this script](https://raw.githubusercontent.com/lucahammer/tweetXer/refs/heads/main/tweetXer.js) to delete all your Tweets. Even if they don't show up on your profile. But you need your Data Export for it to work.
 Because this automates the deletion, it may get your account banned. Not a bad outcome.
@@ -18,7 +18,7 @@ German: [youtube.com/watch?v=HmQ7_ZgVNxg](https://www.youtube.com/watch?v=HmQ7_Z
 
 0.  Use Firefox or Safari if possible
 1.  Log into your Twitter account
-2.  Open the browser console (F12)
+2.  Open the browser console (F12 or cmd+option+i)
 3.  Paste the [whole script](https://raw.githubusercontent.com/lucahammer/tweetXer/main/tweetXer.js) into the console and press enter
 4.  A light blue bar appears at the top of the window
 5.  Use the file picker to select your tweet-headers.js or tweets.js file
@@ -30,7 +30,12 @@ If the process is interrupted at any time, you can use the advanced options to e
 
 Instead of copy-pasting the script, you can install it as a userscript: [greasyfork.org/en/scripts/476062-tweetxer](https://greasyfork.org/en/scripts/476062-tweetxer) (works with eg. [Violentmonkey](https://addons.mozilla.org/firefox/addon/violentmonkey/), [FireMonkey](https://addons.mozilla.org/firefox/addon/firemonkey/) or [tampermonkey](https://addons.mozilla.org/firefox/addon/tampermonkey/) browser addon)
 
-The userscript works on smartphones as well. Android only. 1. Install [Firefox Mobile](https://www.mozilla.org/firefox/browsers/mobile/), 2. Install the [Tampermonkey addon](https://addons.mozilla.org/firefox/addon/tampermonkey/), 3. install the [script from greasyfork](https://greasyfork.org/en/scripts/476062-tweetxer). Open X com and the blue bar should show up. You may need to uninstall the X-App before.
+The userscript works on smartphones as well. 
+**Android** 1. Install [Firefox Mobile](https://www.mozilla.org/firefox/browsers/mobile/) 2. Install the [Tampermonkey addon](https://addons.mozilla.org/firefox/addon/tampermonkey/) 3. Install the [script from greasyfork](https://greasyfork.org/en/scripts/476062-tweetxer) 4. Open X com and the blue bar should show up. You may need to uninstall the X-App before.
+
+[Video tutorial for Android](https://www.youtube.com/watch?v=Z-MeTaRq6xM)
+
+**iOS (iPhone/iPad)** 1. Install the safari extension [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) 2. Enable userscripts in Safari 3. Add the TweetXer userscript: New remote https://update.greasyfork.org/scripts/476062/TweetXer.user.js 4. Visit X com 5. Allow the extension Userscripts to access X com
 
 # How it works
 
