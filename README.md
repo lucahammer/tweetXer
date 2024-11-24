@@ -16,7 +16,6 @@ German: [youtube.com/watch?v=HmQ7_ZgVNxg](https://www.youtube.com/watch?v=HmQ7_Z
 
 # Usage
 
-0.  Use Firefox or Safari if possible
 1.  Log into your Twitter account
 2.  Open the browser console (F12 or cmd+option+i)
 3.  Paste the [whole script](https://raw.githubusercontent.com/lucahammer/tweetXer/main/tweetXer.js) into the console and press enter
