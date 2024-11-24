@@ -30,12 +30,22 @@ If the process is interrupted at any time, you can use the advanced options to e
 
 Instead of copy-pasting the script, you can install it as a userscript: [greasyfork.org/en/scripts/476062-tweetxer](https://greasyfork.org/en/scripts/476062-tweetxer) (works with eg. [Violentmonkey](https://addons.mozilla.org/firefox/addon/violentmonkey/), [FireMonkey](https://addons.mozilla.org/firefox/addon/firemonkey/) or [tampermonkey](https://addons.mozilla.org/firefox/addon/tampermonkey/) browser addon)
 
-The userscript works on smartphones as well. 
-**Android** 1. Install [Firefox Mobile](https://www.mozilla.org/firefox/browsers/mobile/) 2. Install the [Tampermonkey addon](https://addons.mozilla.org/firefox/addon/tampermonkey/) 3. Install the [script from greasyfork](https://greasyfork.org/en/scripts/476062-tweetxer) 4. Open X com and the blue bar should show up. You may need to uninstall the X-App before.
+The userscript works on smartphones as well.
+
+## Android
+1. Install [Firefox Mobile](https://www.mozilla.org/firefox/browsers/mobile/)
+2. Install the [Tampermonkey addon](https://addons.mozilla.org/firefox/addon/tampermonkey/)
+3. Install the [script from greasyfork](https://greasyfork.org/en/scripts/476062-tweetxer)
+4. Open X com and the blue bar should show up. You may need to uninstall the X-App before.
 
 [Video tutorial for Android](https://www.youtube.com/watch?v=Z-MeTaRq6xM)
 
-**iOS (iPhone/iPad)** 1. Install the safari extension [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) 2. Enable userscripts in Safari 3. Add the TweetXer userscript: New remote https://update.greasyfork.org/scripts/476062/TweetXer.user.js 4. Visit X com 5. Allow the extension Userscripts to access X com
+## iOS (iPhone/iPad)
+1. Install the safari extension [Userscripts](https://apps.apple.com/app/userscripts/id1463298887)
+2. Enable userscripts in Safari
+3. Add the TweetXer userscript: New remote https://update.greasyfork.org/scripts/476062/TweetXer.user.js
+4. Visit X com
+5. Allow the extension Userscripts to access X com
 
 # How it works
 
