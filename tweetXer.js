@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.8.3
+// @version      0.8.4
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -19,7 +19,7 @@
 
 (function () {
     var TweetsXer = {
-        version: '0.9.0',
+        version: '0.8.4',
         TweetCount: 0,
         dId: "exportUpload",
         tIds: [],
@@ -45,6 +45,7 @@
         async init() {
             this.baseUrl = 'https://' + window.location.hostname
             this.updateTransactionId()
+            this.createUploadForm()
             await this.getTweetCount()
             this.ct0 = this.getCookie('ct0')
             this.username = document.location.href.split('/')[3].replace('#', '')
@@ -60,9 +61,9 @@
         },
 
         updateTransactionId() {
+            // random string
             this.transaction_id = [...crypto.getRandomValues(new Uint8Array(95))]
                 .map((x, i) => (i = x / 255 * 61 | 0, String.fromCharCode(i + (i > 9 ? i > 35 ? 61 : 55 : 48)))).join``
-            this.createUploadForm()
         },
 
         updateTitle(text) {
@@ -167,7 +168,7 @@
             div.innerHTML = `<style>#${this.dId}{ z-index:99999; position: sticky; top:0px; left:0px; width:auto; margin:0 auto; padding: 20px 10%; background:#87CEFA; opacity:0.9; } #${this.dId} > *{padding:5px;}</style>
                 <div style="color:black">
                     <h2 class="${h2_class}" id="tweetsXer_title">TweetXer</h2>
-                    <p id="info">Select your tweet-headers.js from your Twitter Data Export to start the deletion of all your Tweets. </p>
+                    <p id="info">Please wait for your profile to load. If this message doesn't go away after some seconds, something isn't working.</p>
                     <p id="start">
                         <input type="file" value="" id="${this.dId}_file"  />
                         <a style="color:blue" href="#" id="toggleAdvanced">Advanced Options</a>
@@ -426,6 +427,7 @@
                     TweetsXer.TweetCount = 1000000 // prevents Tweets from being skipped because of tweet count of 0
                 }
             }
+            this.updateInfo('Select your tweet-headers.js from your Twitter Data Export to start the deletion of all your Tweets.')
             console.log(TweetsXer.TweetCount + " Tweets on profile.")
             console.log("You can close the console now to reduce the memory usage.")
             console.log("Reopen the console if there are issues to see if an error shows up.")
