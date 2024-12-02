@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.8.4
+// @version      0.9.0
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -19,7 +19,7 @@
 
 (function () {
     var TweetsXer = {
-        version: '0.8.4',
+        version: '0.9.0',
         TweetCount: 0,
         dId: "exportUpload",
         tIds: [],
@@ -31,7 +31,7 @@
         dCount: 0,
         deleteURL: '/i/api/graphql/VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
         unfavURL: '/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
-        deleteMesseageURL: '/i/api/graphql/BJ6DtxA2llfjnRoRjaiIiw/DMMessageDeleteMutation',
+        deleteMessageURL: '/i/api/graphql/BJ6DtxA2llfjnRoRjaiIiw/DMMessageDeleteMutation',
         username: '',
         action: '',
         bookmarksURL: '/i/api/graphql/L7vvM2UluPgWOW4GDvWyvw/Bookmarks?',
@@ -96,6 +96,7 @@
                     // window.YTD.tweet_headers.part0
                     // window.YTD.tweets.part0
                     // window.YTD.like.part0
+                    // window.YTD.direct_message_headers.part0
                     let cutpoint = evt.target.result.indexOf('= ')
                     let filestart = evt.target.result.slice(0, cutpoint)
                     let json = JSON.parse(evt.target.result.slice(cutpoint + 1))
@@ -112,6 +113,12 @@
                         console.log('File contains Favs.')
                         TweetsXer.action = 'unfav'
                         TweetsXer.tIds = json.map((x) => x.like.tweetId)
+                    }
+                    else if (filestart.includes('.direct_message_headers.')) {
+                        console.log('File contains Direct Messages.')
+                        TweetsXer.action = 'undm'
+                        TweetsXer.tIds = json.map((c) => c.dmConversation.messages.map((m) => m.messageCreate.id))
+                        TweetsXer.tIds = TweetsXer.tIds.flat()
                     } else {
                         TweetsXer.updateInfo('File content not recognized. Please use a file from the Twitter data export.')
                         console.log('File content not recognized. Please use a file from the Twitter data export.')
@@ -151,7 +158,12 @@
                         TweetsXer.tIds.reverse()
                         TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} Favs`)
                         TweetsXer.deleteFavs()
-                    } else {
+                    } else if (TweetsXer.action == 'undm') {
+                        TweetsXer.tIds.reverse()
+                        TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} DMs`)
+                        TweetsXer.deleteDMs()
+                    }
+                    else {
                         TweetsXer.updateTitle(`TweetXer: Please try a different file`)
                     }
 
@@ -282,7 +294,10 @@
             TweetsXer.updateTitle('TweetXer')
         },
 
-        async sendRequest(url) {
+        async sendRequest(
+            url,
+            body = `{\"variables\":{\"tweet_id\":\"${TweetsXer.tId}\",\"dark_request\":false},\"queryId\":\"${url.split('/')[6]}\"}`
+        ) {
             return new Promise(async (resolve) => {
                 try {
                     let response = await fetch(url, {
@@ -296,7 +311,7 @@
                         },
                         "referrer": `${TweetsXer.baseUrl}/${TweetsXer.username}/with_replies`,
                         "referrerPolicy": "strict-origin-when-cross-origin",
-                        "body": `{\"variables\":{\"tweet_id\":\"${TweetsXer.tId}\",\"dark_request\":false},\"queryId\":\"${url.split('/')[6]}\"}`,
+                        "body": body,
                         "method": "POST",
                         "mode": "cors",
                         "credentials": "include",
@@ -354,8 +369,7 @@
         async deleteTweets() {
             while (this.tIds.length > 0) {
                 this.tId = this.tIds.pop()
-                message = await this.sendRequest(this.baseUrl + this.deleteURL)
-                //console.log(message)
+                await this.sendRequest(this.baseUrl + this.deleteURL)
             }
             TweetsXer.tId = ''
             TweetsXer.updateProgressBar()
@@ -369,11 +383,22 @@
 
             while (this.tIds.length > 0) {
                 this.tId = this.tIds.pop()
-                message = await this.sendRequest(this.baseUrl + this.unfavURL)
-                //console.log(message)
+                await this.sendRequest(this.baseUrl + this.unfavURL)
             }
             TweetsXer.tId = ''
             TweetsXer.updateTitle('TweetXer')
+            TweetsXer.updateProgressBar()
+        },
+
+        async deleteDMs() {
+            while (this.tIds.length > 0) {
+                this.tId = this.tIds.pop()
+                await this.sendRequest(
+                    this.baseUrl + this.deleteMessageURL,
+                    body = `{\"variables\":{\"messageId\":\"${TweetsXer.tId}\"},\"requestId\":\""}`
+                )
+            }
+            TweetsXer.tId = ''
             TweetsXer.updateProgressBar()
         },
 
