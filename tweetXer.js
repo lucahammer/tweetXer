@@ -19,7 +19,7 @@
 
 (function () {
     var TweetsXer = {
-        version: '0.9.0',
+        version: '0.9.1',
         TweetCount: 0,
         dId: "exportUpload",
         tIds: [],
@@ -32,6 +32,8 @@
         deleteURL: '/i/api/graphql/VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
         unfavURL: '/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
         deleteMessageURL: '/i/api/graphql/BJ6DtxA2llfjnRoRjaiIiw/DMMessageDeleteMutation',
+        deleteConvoURL: '/i/api/1.1/dm/conversation/USER_ID-CONVERSATION_ID/delete.json',
+        deleteDMsOneByOne: false,
         username: '',
         action: '',
         bookmarksURL: '/i/api/graphql/L7vvM2UluPgWOW4GDvWyvw/Bookmarks?',
@@ -114,12 +116,22 @@
                         TweetsXer.action = 'unfav'
                         TweetsXer.tIds = json.map((x) => x.like.tweetId)
                     }
-                    else if (filestart.includes('.direct_message_headers.')) {
+                    else if (
+                        filestart.includes('.direct_message_headers.')
+                        || filestart.includes('.direct_message_group_headers.')
+                        || filestart.includes('.direct_messages.')
+                        || filestart.includes('.direct_message_groups.')) {
                         console.log('File contains Direct Messages.')
                         TweetsXer.action = 'undm'
-                        TweetsXer.tIds = json.map((c) => c.dmConversation.messages.map((m) => m.messageCreate ? m.messageCreate.id : 0))
-                        TweetsXer.tIds = TweetsXer.tIds.flat()
-                        TweetsXer.tIds = TweetsXer.tIds.filter((i) => i != 0)
+                        if (this.deleteDMsOneByOne) {
+                            TweetsXer.tIds = json.map((c) => c.dmConversation.messages.map((m) => m.messageCreate ? m.messageCreate.id : 0))
+                            TweetsXer.tIds = TweetsXer.tIds.flat()
+                            TweetsXer.tIds = TweetsXer.tIds.filter((i) => i != 0)
+                        }
+                        else {
+                            TweetsXer.tIds = json.map((c) => c.dmConversation.conversationId)
+                        }
+
                     } else {
                         TweetsXer.updateInfo('File content not recognized. Please use a file from the Twitter data export.')
                         console.log('File content not recognized. Please use a file from the Twitter data export.')
@@ -160,9 +172,20 @@
                         TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} Favs`)
                         TweetsXer.deleteFavs()
                     } else if (TweetsXer.action == 'undm') {
+                        TweetsXer.skip = document.getElementById('skipCount').value.length > 0 ? document.getElementById('skipCount').value : 0
+                        console.log(`Skipping ${TweetsXer.skip} messages/convos`)
+                        TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
+                        TweetsXer.dCount = TweetsXer.skip
                         TweetsXer.tIds.reverse()
-                        TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} DMs`)
-                        TweetsXer.deleteDMs()
+                        if (this.deleteDMsOneByOne) {
+                            TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} DMs`)
+                            TweetsXer.deleteDMs()
+                        }
+                        else {
+                            TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} DM Conversations`)
+                            TweetsXer.deleteConvos()
+                        }
+
                     }
                     else {
                         TweetsXer.updateTitle(`TweetXer: Please try a different file`)
@@ -178,34 +201,40 @@
             var div = document.createElement("div")
             div.id = this.dId
             if (document.getElementById(this.dId)) { document.getElementById(this.dId).remove() }
-            div.innerHTML = `<style>#${this.dId}{ z-index:99999; position: sticky; top:0px; left:0px; width:auto; margin:0 auto; padding: 20px 10%; background:#87CEFA; opacity:0.9; } #${this.dId} > *{padding:5px;}</style>
-                <div style="color:black">
-                    <h2 class="${h2_class}" id="tweetsXer_title">TweetXer</h2>
-                    <p id="info">Please wait for your profile to load. If this message doesn't go away after some seconds, something isn't working.</p>
-                    <p id="start">
-                        <input type="file" value="" id="${this.dId}_file"  />
-                        <a style="color:blue" href="#" id="toggleAdvanced">Advanced Options</a>
-                    <div id="advanced" style="display:none">
-                        <label for="skipCount">Enter how many Tweets to skip before selecting a file.</label>
-                        <input id="skipCount" type="number" value="" />
-                        <p>To delete your Favs (aka Likes), select your like.js file. Unfaving is limited by X Corp to 500 unfavs per 15 minutes.</p>
-                        <p><strong>Export bookmarks</strong><br>
-                            Bookmarks are not included in the official data export. You can export them here.
-                            <input id="exportBookmarks" type="button" value="Export Bookmarks" />
-                        </p>
-                        <p><strong>No tweet-headers.js?</strong><br>
-                            If you are unable to get your data export, you can use the following option.<br>
-                            This option is much slower and less reliable. It can remove at most 4000 Tweets per hour.<br>
-                            <input id="slowDelete" type="button" value="Slow delete without file" />
-                        </p>
-                        <p><strong>Unfollow everyone</strong><br>
-                            It's time to let go. This will unfollow everyone you follow.<br>
-                            <input id="unfollowEveryone" type="button" value="Unfollow everyone" />
-                        </p>
-                        <p><a id="removeTweetXer" style="color:blue" href="#">Remove TweetXer</a></p>
-                        <p><small>${TweetsXer.version}</small></p>
-                    </div>
+            div.innerHTML = `
+            <style>#${this.dId}{ z-index:99999; position: sticky; top:0px; left:0px; width:auto; margin:0 auto; padding: 20px 10%; background:#87CEFA; opacity:0.9; } #${this.dId} > *{padding:5px;}</style>
+            <div style="color:black">
+                <h2 class="${h2_class}" id="tweetsXer_title">TweetXer</h2>
+                <p id="info">Please wait for your profile to load. If this message doesn't go away after some seconds, something isn't working.</p>
+                <p id="start">
+                    <input type="file" value="" id="${this.dId}_file"  />
+                    <a style="color:blue" href="#" id="toggleAdvanced">Advanced Options</a>
+                <div id="advanced" style="display:none">
+                    <label for="skipCount">Enter how many Tweets to skip before selecting a file.</label>
+                    <input id="skipCount" type="number" value="" />
+                    <p>Supported files:
+                    <ul>
+                        <li>tweet-headers.js to delete Tweets (10.000 - 20.000 per hour)</li>
+                        <li>direct-message-header.js and direct-message-group-headers.js to delete DMs (around 800 per 15 minutes)</li>
+                        <li>like.js to delete Favs (500 per 15 minutes; only works for the most recent few thousands)</li>
+                    </ul>
+                    <p><strong>Export bookmarks</strong><br>
+                        Bookmarks are not included in the official data export. You can export them here.
+                        <input id="exportBookmarks" type="button" value="Export Bookmarks" />
+                    </p>
+                    <p><strong>No tweet-headers.js?</strong><br>
+                        If you are unable to get your data export, you can use the following option.<br>
+                        This option is much slower and less reliable. It can remove at most 4000 Tweets per hour.<br>
+                        <input id="slowDelete" type="button" value="Slow delete without file" />
+                    </p>
+                    <p><strong>Unfollow everyone</strong><br>
+                        It's time to let go. This will unfollow everyone you follow.<br>
+                        <input id="unfollowEveryone" type="button" value="Unfollow everyone" />
+                    </p>
+                    <p><a id="removeTweetXer" style="color:blue" href="#">Remove TweetXer</a></p>
+                    <p><small>${TweetsXer.version}</small></p>
                 </div>
+            </div>
                 `
             document.body.insertBefore(div, document.body.firstChild)
             document.getElementById("toggleAdvanced").addEventListener("click", (() => {
@@ -371,12 +400,12 @@
                 this.tId = this.tIds.pop()
                 await this.sendRequest(this.baseUrl + this.deleteURL)
             }
-            TweetsXer.tId = ''
-            TweetsXer.updateProgressBar()
+            this.tId = ''
+            this.updateProgressBar()
         },
 
         async deleteFavs() {
-            TweetsXer.updateTitle('TweetXer: Deleting Favs')
+            this.updateTitle('TweetXer: Deleting Favs')
             // 500 unfavs per 15 Minutes
             // x-rate-limit-remaining
             // x-rate-limit-reset
@@ -385,9 +414,9 @@
                 this.tId = this.tIds.pop()
                 await this.sendRequest(this.baseUrl + this.unfavURL)
             }
-            TweetsXer.tId = ''
-            TweetsXer.updateTitle('TweetXer')
-            TweetsXer.updateProgressBar()
+            this.tId = ''
+            this.updateTitle('TweetXer')
+            this.updateProgressBar()
         },
 
         async deleteDMs() {
@@ -395,11 +424,69 @@
                 this.tId = this.tIds.pop()
                 await this.sendRequest(
                     this.baseUrl + this.deleteMessageURL,
-                    body = `{\"variables\":{\"messageId\":\"${TweetsXer.tId}\"},\"requestId\":\""}`
+                    body = `{\"variables\":{\"messageId\":\"${this.tId}\"},\"requestId\":\""}`
                 )
             }
-            TweetsXer.tId = ''
-            TweetsXer.updateProgressBar()
+            this.tId = ''
+            this.updateProgressBar()
+        },
+
+        async deleteConvos() {
+            while (this.tIds.length > 0) {
+                this.tId = this.tIds.pop()
+                url = this.baseUrl + this.deleteConvoURL.replace('USER_ID-CONVERSATION_ID', this.tId)
+                let response = await fetch(url, {
+                    "headers": {
+                        "authorization": TweetsXer.authorization,
+                        "content-type": "application/x-www-form-urlencoded",
+                        "x-client-transaction-id": TweetsXer.transaction_id,
+                        "x-csrf-token": TweetsXer.ct0,
+                        "x-twitter-active-user": "yes",
+                        "x-twitter-auth-type": "OAuth2Session"
+                    },
+                    "referrer": `${TweetsXer.baseUrl}/messages`,
+                    "body": 'dm_secret_conversations_enabled=false&krs_registration_enabled=true&cards_platform=Web-12&include_cards=1&include_ext_alt_text=true&include_ext_limited_action_results=true&include_quote_count=true&include_reply_count=1&tweet_mode=extended&include_ext_views=true&dm_users=false&include_groups=true&include_inbox_timelines=true&include_ext_media_color=true&supports_reactions=true&supports_edit=true&include_conversation_info=true',
+                    "method": "POST",
+                    "mode": "cors",
+                    "credentials": "include",
+                    "signal": AbortSignal.timeout(5000)
+                })
+
+
+                if (response.status == 204) {
+                    TweetsXer.dCount++
+                    TweetsXer.updateProgressBar()
+
+                    if (response.headers.get('x-rate-limit-remaining') != null && response.headers.get('x-rate-limit-remaining') < 1) {
+                        console.log('rate limit hit')
+                        console.log(response.headers.get('x-rate-limit-remaining'))
+                        TweetsXer.ratelimitreset = response.headers.get('x-rate-limit-reset')
+                        let sleeptime = TweetsXer.ratelimitreset - Math.floor(Date.now() / 1000)
+                        while (sleeptime > 0) {
+                            sleeptime = TweetsXer.ratelimitreset - Math.floor(Date.now() / 1000)
+                            TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
+                            await TweetsXer.sleep(1000)
+                        }
+                    }
+                    await TweetsXer.sleep(Math.floor(Math.random() * 200)) // send requests slightly slower and with random intervals
+                }
+                else if (response.status == 429 || response.status == 420) {
+                    TweetsXer.tIds.push(TweetsXer.tId)
+                    console.log(`Received status code ${response.status}. Waiting before trying again.`)
+                    let sleeptime = 60 * 5 // is that enough?
+                    while (sleeptime > 0) {
+                        sleeptime--
+                        TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
+                        await TweetsXer.sleep(1000)
+                    }
+
+                }
+                else {
+                    console.log(response)
+                }
+            }
+            this.tId = ''
+            this.updateProgressBar()
         },
 
         async getTweetCount() {

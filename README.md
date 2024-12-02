@@ -4,6 +4,7 @@ You can use [this script](https://raw.githubusercontent.com/lucahammer/tweetXer/
 Because this automates the deletion, it may get your account banned. Not a bad outcome.
 
 ## Translations
+
 [Portuguese (Brazil)](https://github.com/arielgmelo/tweetXer-ptbr)
 
 ## Video tutorial
@@ -32,6 +33,7 @@ Instead of copy-pasting the script, you can install it as a userscript: [greasyf
 The userscript works on smartphones as well.
 
 ## Android
+
 1. Install [Firefox Mobile](https://www.mozilla.org/firefox/browsers/mobile/)
 2. Install the [Tampermonkey addon](https://addons.mozilla.org/firefox/addon/tampermonkey/)
 3. Install the [script from greasyfork](https://greasyfork.org/en/scripts/476062-tweetxer)
@@ -40,6 +42,7 @@ The userscript works on smartphones as well.
 [Video tutorial for Android](https://www.youtube.com/watch?v=Z-MeTaRq6xM)
 
 ## iOS (iPhone/iPad)
+
 1. Install the safari extension [Userscripts](https://apps.apple.com/app/userscripts/id1463298887)
 2. Enable userscripts in Safari
 3. Add the TweetXer userscript: New remote https://update.greasyfork.org/scripts/476062/TweetXer.user.js
@@ -63,11 +66,18 @@ Because bookmarks aren't included in the Twitter data export, there is a button 
 
 If for some reason you can't use your data export or it missed some Tweets, you can use slow mode under "Advanced options". Be warned, it is very slow because it has to load the Tweets on your profile first to delete them and there are various request limits for that.
 
+# Bonus: Delete Direct Messages
+
+To delete DMs, you select the direct-message-header.js file instead of the tweet-headers.js file. Once it's done, reload the page, paste TweetXer into the console again and select the direct-message-group-headers.js file to remove message groups. If the process gets interrupted for whatever reason, you can enter how many messages where deleted before under "Advanced options" before selcting the file.
+
+[According to former engineers](https://bsky.app/profile/triketora.com/post/3lcbmqzo4uk25), DMs are removed from the server if all sides remove them from their inbox.
+
 # Bonus: Unfollow everyone
 
 Under "Advanced options" you can automatically unfollow everyone. You may need to rerun with some time in between because of rate limits.
 
 # Known issues and solutions
+
 - I can't paste the script.
 
   Your browser tries to protect you from pasting some random script you found. Type "allow pasting" (Firefox) or "allow pasting" (Chrome) and hit enter to confirm that you know what you are doing.
