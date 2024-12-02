@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.9.0
+// @version      0.9.1
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -117,8 +117,9 @@
                     else if (filestart.includes('.direct_message_headers.')) {
                         console.log('File contains Direct Messages.')
                         TweetsXer.action = 'undm'
-                        TweetsXer.tIds = json.map((c) => c.dmConversation.messages.map((m) => m.messageCreate.id))
+                        TweetsXer.tIds = json.map((c) => c.dmConversation.messages.map((m) => m.messageCreate ? m.messageCreate.id : 0))
                         TweetsXer.tIds = TweetsXer.tIds.flat()
+                        TweetsXer.tIds = TweetsXer.tIds.filter((i) => i != 0)
                     } else {
                         TweetsXer.updateInfo('File content not recognized. Please use a file from the Twitter data export.')
                         console.log('File content not recognized. Please use a file from the Twitter data export.')
@@ -271,7 +272,6 @@
                 }
 
                 if (!response.headers.get('x-rate-limit-remaining') && response.headers.get('x-rate-limit-remaining') < 1) {
-                    console.log(response.headers.get('x-rate-limit-remaining'))
                     console.log('rate limit hit')
                     TweetsXer.ratelimitreset = response.headers.get('x-rate-limit-reset')
                     let sleeptime = TweetsXer.ratelimitreset - Math.floor(Date.now() / 1000)
