@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.8.2
+// @version      0.8.3
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -19,7 +19,7 @@
 
 (function () {
     var TweetsXer = {
-        version: '0.8.1',
+        version: '0.9.0',
         TweetCount: 0,
         dId: "exportUpload",
         tIds: [],
@@ -31,6 +31,7 @@
         dCount: 0,
         deleteURL: '/i/api/graphql/VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
         unfavURL: '/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
+        deleteMesseageURL: '/i/api/graphql/BJ6DtxA2llfjnRoRjaiIiw/DMMessageDeleteMutation',
         username: '',
         action: '',
         bookmarksURL: '/i/api/graphql/L7vvM2UluPgWOW4GDvWyvw/Bookmarks?',
@@ -54,8 +55,8 @@
         },
 
         getCookie(name) {
-            let a = `; ${document.cookie}`.match(`;\\s*${name}=([^;]+)`);
-            return a ? a[1] : false;
+            let a = `; ${document.cookie}`.match(`;\\s*${name}=([^;]+)`)
+            return a ? a[1] : false
         },
 
         updateTransactionId() {
@@ -83,7 +84,7 @@
 
         updateProgressBar(verb = 'deleted') {
             document.getElementById('progressbar').setAttribute('value', this.dCount)
-            this.updateInfo(`${this.dCount} ${verb}`)
+            this.updateInfo(`${this.dCount} ${verb}. ${this.tId}`)
         },
 
         processFile() {
@@ -111,24 +112,29 @@
                         TweetsXer.action = 'unfav'
                         TweetsXer.tIds = json.map((x) => x.like.tweetId)
                     } else {
+                        TweetsXer.updateInfo('File content not recognized. Please use a file from the Twitter data export.')
                         console.log('File content not recognized. Please use a file from the Twitter data export.')
                     }
 
-                    TweetsXer.total = TweetsXer.tIds.length
-                    document.getElementById(`${TweetsXer.dId}_file`).remove()
-                    TweetsXer.createProgressBar()
-
-                    TweetsXer.skip = document.getElementById('skipCount').value
+                    if (TweetsXer.action.length > 0) {
+                        TweetsXer.total = TweetsXer.tIds.length
+                        document.getElementById(`${TweetsXer.dId}_file`).remove()
+                        TweetsXer.createProgressBar()
+                    }
 
                     if (TweetsXer.action == 'untweet') {
-                        if (TweetsXer.skip == 0) {
+                        if (document.getElementById('skipCount').value.length < 1) {
                             // If there is no amount set to skip, automatically try to skip the amount
                             // that has been deleted already. Difference of Tweeets in file to count on profile
                             // 5% tolerance to prevent skipping too much
+                            TweetsXer.skip = document.getElementById('skipCount').value
                             TweetsXer.skip = TweetsXer.total - TweetsXer.TweetCount - parseInt(TweetsXer.total / 20)
                             TweetsXer.skip = Math.max(0, TweetsXer.skip)
                         }
-                        console.log(`Skipping oldest ${TweetsXer.skip} Tweets. Use advanced options to manually set how many to skip. Enter 1 to prevent the automatic calculation.`)
+                        else {
+                            TweetsXer.skip = 0
+                        }
+                        console.log(`Skipping oldest ${TweetsXer.skip} Tweets. Use advanced options to manually set how many to skip. Enter 0 to prevent the automatic calculation.`)
                         TweetsXer.tIds.reverse()
                         TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
                         TweetsXer.dCount = TweetsXer.skip
@@ -137,6 +143,7 @@
 
                         TweetsXer.deleteTweets()
                     } else if (TweetsXer.action == 'unfav') {
+                        TweetsXer.skip = document.getElementById('skipCount').value.length > 0 ? document.getElementById('skipCount').value : 0
                         console.log(`Skipping oldest ${TweetsXer.skip} Tweets`)
                         TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
                         TweetsXer.dCount = TweetsXer.skip
@@ -165,8 +172,8 @@
                         <input type="file" value="" id="${this.dId}_file"  />
                         <a style="color:blue" href="#" id="toggleAdvanced">Advanced Options</a>
                     <div id="advanced" style="display:none">
-                        <label for="skipCount">Enter how many Tweets to skip before selecting a file. If 0, the script will try to automatically detect how many Tweets to skip by calcualting the difference between Tweets in the file and on the profile.</label>
-                        <input id="skipCount" type="number" value="0" />
+                        <label for="skipCount">Enter how many Tweets to skip before selecting a file.</label>
+                        <input id="skipCount" type="number" value="" />
                         <p>To delete your Favs (aka Likes), select your like.js file. Unfaving is limited by X Corp to 500 unfavs per 15 minutes.</p>
                         <p><strong>Export bookmarks</strong><br>
                             Bookmarks are not included in the official data export. You can export them here.
@@ -208,7 +215,7 @@
             let variables = ''
             while (TweetsXer.bookmarksNext.length > 0 || TweetsXer.bookmarks.length == 0) {
                 if (TweetsXer.bookmarksNext.length > 0) {
-                    variables = `{"count":20,"cursor":"${TweetsXer.bookmarksNext}","includePromotedContent":true}`
+                    variables = `{"count":20,"cursor":"${TweetsXer.bookmarksNext}","includePromotedContent":false}`
                 } else variables = '{"count":20,"includePromotedContent":false}'
                 let response = await fetch(TweetsXer.baseUrl + TweetsXer.bookmarksURL + new URLSearchParams({
                     variables: variables,
@@ -250,12 +257,13 @@
                     console.log(response)
                 }
 
-                if (response.headers.get('x-rate-limit-remaining') < 1) {
+                if (!response.headers.get('x-rate-limit-remaining') && response.headers.get('x-rate-limit-remaining') < 1) {
+                    console.log(response.headers.get('x-rate-limit-remaining'))
                     console.log('rate limit hit')
-                    let ratelimitreset = response.headers.get('x-rate-limit-reset')
-                    let sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
+                    TweetsXer.ratelimitreset = response.headers.get('x-rate-limit-reset')
+                    let sleeptime = TweetsXer.ratelimitreset - Math.floor(Date.now() / 1000)
                     while (sleeptime > 0) {
-                        sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
+                        sleeptime = TweetsXer.ratelimitreset - Math.floor(Date.now() / 1000)
                         TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
                         await TweetsXer.sleep(1000)
                     }
@@ -273,79 +281,52 @@
             TweetsXer.updateTitle('TweetXer')
         },
 
-        async deleteFavs() {
-            TweetsXer.updateTitle('TweetXer: Deleting Favs')
-            // 500 unfavs per 15 Minutes
-            // x-rate-limit-remaining
-            // x-rate-limit-reset
-
-            while (this.tIds.length > 0) {
-                this.tId = this.tIds.pop()
-                let response = await fetch(this.baseUrl + this.unfavURL, {
-                    "headers": {
-                        "authorization": this.authorization,
-                        "content-type": "application/json",
-                        "x-client-transaction-id": this.transaction_id,
-                        "x-csrf-token": this.ct0,
-                        "x-twitter-active-user": "yes",
-                        "x-twitter-auth-type": "OAuth2Session",
-                    },
-                    "referrer": `${TweetsXer.baseUrl}/${this.username}/likes`,
-                    "referrerPolicy": "strict-origin-when-cross-origin",
-                    "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\"},\"queryId\":\"${this.baseUrl + this.unfavURL.split('/')[6]}\"}`,
-                    "method": "POST",
-                    "mode": "cors",
-                    "credentials": "include"
-                })
-
-                if (response.status == 200) {
-                    TweetsXer.dCount++
-                    TweetsXer.updateProgressBar()
-                } else {
-                    console.log(response)
-                }
-
-                if (response.headers.get('x-rate-limit-remaining') < 1) {
-                    console.log('rate limit hit')
-                    let ratelimitreset = response.headers.get('x-rate-limit-reset')
-                    let sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
-                    while (sleeptime > 0) {
-                        sleeptime = ratelimitreset - Math.floor(Date.now() / 1000)
-                        TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
-                        await TweetsXer.sleep(1000)
-                    }
-                }
-            }
-            TweetsXer.updateTitle('TweetXer')
-        },
-
-        async deleteTweets() {
-            while (this.tIds.length > 0) {
-                this.tId = this.tIds.pop()
+        async sendRequest(url) {
+            return new Promise(async (resolve) => {
                 try {
-                    let response = await fetch(this.baseUrl + this.deleteURL, {
+                    let response = await fetch(url, {
                         "headers": {
-                            "authorization": this.authorization,
+                            "authorization": TweetsXer.authorization,
                             "content-type": "application/json",
-                            "x-client-transaction-id": this.transaction_id,
-                            "x-csrf-token": this.ct0,
+                            "x-client-transaction-id": TweetsXer.transaction_id,
+                            "x-csrf-token": TweetsXer.ct0,
                             "x-twitter-active-user": "yes",
                             "x-twitter-auth-type": "OAuth2Session"
                         },
-                        "referrer": `${TweetsXer.baseUrl}/${this.username}/with_replies`,
+                        "referrer": `${TweetsXer.baseUrl}/${TweetsXer.username}/with_replies`,
                         "referrerPolicy": "strict-origin-when-cross-origin",
-                        "body": `{\"variables\":{\"tweet_id\":\"${this.tId}\",\"dark_request\":false},\"queryId\":\"${this.baseUrl + this.deleteURL.split('/')[6]}\"}`,
+                        "body": `{\"variables\":{\"tweet_id\":\"${TweetsXer.tId}\",\"dark_request\":false},\"queryId\":\"${url.split('/')[6]}\"}`,
                         "method": "POST",
                         "mode": "cors",
                         "credentials": "include",
                         "signal": AbortSignal.timeout(5000)
                     })
+
+
                     if (response.status == 200) {
                         TweetsXer.dCount++
                         TweetsXer.updateProgressBar()
+
+                        if (response.headers.get('x-rate-limit-remaining') != null && response.headers.get('x-rate-limit-remaining') < 1) {
+                            console.log('rate limit hit')
+                            console.log(response.headers.get('x-rate-limit-remaining'))
+                            TweetsXer.ratelimitreset = response.headers.get('x-rate-limit-reset')
+                            let sleeptime = TweetsXer.ratelimitreset - Math.floor(Date.now() / 1000)
+                            while (sleeptime > 0) {
+                                sleeptime = TweetsXer.ratelimitreset - Math.floor(Date.now() / 1000)
+                                TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
+                                await TweetsXer.sleep(1000)
+                            }
+                            resolve('deleted and waiting')
+                        }
+                        else {
+                            resolve('deleted')
+                        }
+
+
                     }
                     else if (response.status == 429) {
-                        this.tIds.push(this.tId)
+                        TweetsXer.tIds.push(TweetsXer.tId)
                         console.log('Received status code 429. Waiting for 1 second before trying again.')
                         await TweetsXer.sleep(1000)
                     }
@@ -355,7 +336,7 @@
 
                 } catch (error) {
                     if (error.Name === 'AbortError') {
-                        this.tIds.push(this.tId)
+                        TweetsXer.tIds.push(TweetsXer.tId)
                         console.log('Request timeout.')
                         let sleeptime = 15
                         while (sleeptime > 0) {
@@ -363,9 +344,36 @@
                             TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
                             await TweetsXer.sleep(1000)
                         }
+                        resolve('error')
                     }
                 }
+            })
+        },
+
+        async deleteTweets() {
+            while (this.tIds.length > 0) {
+                this.tId = this.tIds.pop()
+                message = await this.sendRequest(this.baseUrl + this.deleteURL)
+                //console.log(message)
             }
+            TweetsXer.tId = ''
+            TweetsXer.updateProgressBar()
+        },
+
+        async deleteFavs() {
+            TweetsXer.updateTitle('TweetXer: Deleting Favs')
+            // 500 unfavs per 15 Minutes
+            // x-rate-limit-remaining
+            // x-rate-limit-reset
+
+            while (this.tIds.length > 0) {
+                this.tId = this.tIds.pop()
+                message = await this.sendRequest(this.baseUrl + this.unfavURL)
+                //console.log(message)
+            }
+            TweetsXer.tId = ''
+            TweetsXer.updateTitle('TweetXer')
+            TweetsXer.updateProgressBar()
         },
 
         async getTweetCount() {
