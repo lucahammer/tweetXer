@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.9.1
+// @version      0.9.2
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -18,7 +18,7 @@
 // ==/UserScript==
 
 (function () {
-    var TweetsXer = {
+    let TweetsXer = {
         version: '0.9.1',
         TweetCount: 0,
         dId: "exportUpload",
@@ -45,7 +45,7 @@
         transaction_id: '',
 
         async init() {
-            this.baseUrl = 'https://' + window.location.hostname
+            this.baseUrl = `https://${window.location.hostname}`
             this.updateTransactionId()
             this.createUploadForm()
             await this.getTweetCount()
@@ -58,8 +58,8 @@
         },
 
         getCookie(name) {
-            let a = `; ${document.cookie}`.match(`;\\s*${name}=([^;]+)`)
-            return a ? a[1] : false
+            const match = `; ${document.cookie}`.match(`;\\s*${name}=([^;]+)`)
+            return match ? match[1] : null
         },
 
         updateTransactionId() {
@@ -77,21 +77,22 @@
         },
 
         createProgressBar() {
-            let progressbar = document.createElement("progress")
-            progressbar.setAttribute('id', "progressbar")
-            progressbar.setAttribute('value', this.dCount)
-            progressbar.setAttribute('max', this.total)
-            progressbar.setAttribute('style', 'width:100%')
+            const progressbar = document.createElement("progress")
+            progressbar.id = "progressbar"
+            progressbar.value = this.dCount
+            progressbar.max = this.total
+            progressbar.style = 'width:100%'
+
             document.getElementById(this.dId).appendChild(progressbar)
         },
 
-        updateProgressBar(verb = 'deleted') {
-            document.getElementById('progressbar').setAttribute('value', this.dCount)
-            this.updateInfo(`${this.dCount} ${verb}. ${this.tId}`)
+        updateProgressBar() {
+            document.getElementById('progressbar').value = this.dCount
+            this.updateInfo(`${this.dCount} deleted. ${this.tId}`)
         },
 
         processFile() {
-            let tn = document.getElementById(`${TweetsXer.dId}_file`)
+            const tn = document.getElementById(`${TweetsXer.dId}_file`)
             if (tn.files && tn.files[0]) {
                 let fr = new FileReader()
                 fr.onloadend = function (evt) {
@@ -197,14 +198,14 @@
         },
 
         createUploadForm() {
-            var h2_class = document.querySelectorAll("h2")[1]?.getAttribute("class") || ""
-            var div = document.createElement("div")
+            const h2Class = document.querySelectorAll("h2")[1]?.getAttribute("class") || ""
+            const div = document.createElement("div")
             div.id = this.dId
             if (document.getElementById(this.dId)) { document.getElementById(this.dId).remove() }
             div.innerHTML = `
             <style>#${this.dId}{ z-index:99999; position: sticky; top:0px; left:0px; width:auto; margin:0 auto; padding: 20px 10%; background:#87CEFA; opacity:0.9; } #${this.dId} > *{padding:5px;}</style>
             <div style="color:black">
-                <h2 class="${h2_class}" id="tweetsXer_title">TweetXer</h2>
+                <h2 class="${h2Class}" id="tweetsXer_title">TweetXer</h2>
                 <p id="info">Please wait for your profile to load. If this message doesn't go away after some seconds, something isn't working.</p>
                 <p id="start">
                     <input type="file" value="" id="${this.dId}_file"  />
@@ -238,7 +239,7 @@
                 `
             document.body.insertBefore(div, document.body.firstChild)
             document.getElementById("toggleAdvanced").addEventListener("click", (() => {
-                let adv = document.getElementById('advanced')
+                const adv = document.getElementById('advanced')
                 if (adv.style.display == 'none') {
                     adv.style.display = 'block'
                 } else {
@@ -518,26 +519,36 @@
             }
             await TweetsXer.sleep(1000)
 
-            try {
-                TweetsXer.TweetCount = document.querySelector('[data-testid="primaryColumn"]>div>div>div')
-                    .textContent.match(/((\d|,|\.|K)+) (\w+)$/)[1]
+            function extractTweetCount(selector) {
+                const element = document.querySelector(selector)
+                if (!element) return null
+
+                const match = element.textContent.match(/((\d|,|\.|K)+) (\w+)$/)
+                if (!match) return null
+
+                return match[1]
                     .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
                     .replace('K', '000')
                     .replace(',', '')
                     .replace('.', '')
-            } catch (error) {
-                try {
-                    TweetsXer.TweetCount = document.querySelector('[data-testid="TopNavBar"]>div>div')
-                        .textContent.match(/((\d|,|\.|K)+) (\w+)$/)[1]
-                        .replace(/\.(\d+)K/, '$1'.padEnd(4, '0'))
-                        .replace('K', '000')
-                        .replace(',', '')
-                        .replace('.', '')
+            }
+
+            try {
+                TweetsXer.TweetCount = extractTweetCount('[data-testid="primaryColumn"]>div>div>div')
+
+                if (!TweetsXer.TweetCount) {
+                    TweetsXer.TweetCount = extractTweetCount('[data-testid="TopNavBar"]>div>div')
                 }
-                catch (error) {
+
+                if (!TweetsXer.TweetCount) {
                     console.log("Wasn't able to find Tweet count on profile. Setting it to 1 million.")
-                    TweetsXer.TweetCount = 1000000 // prevents Tweets from being skipped because of tweet count of 0
+                    TweetsXer.TweetCount = 1000000
                 }
+
+            } catch (error) {
+                console.log("Wasn't able to find Tweet count on profile. Setting it to 1 million.")
+                TweetsXer.TweetCount = 1000000 // prevents Tweets from being skipped because if tweet count of 0
+
             }
             this.updateInfo('Select your tweet-headers.js from your Twitter Data Export to start the deletion of all your Tweets.')
             console.log(TweetsXer.TweetCount + " Tweets on profile.")
@@ -641,14 +652,15 @@
     }
 
     const waitForElemToExist = async (selector) => {
-        return new Promise(resolve => {
-            if (document.querySelector(selector)) {
-                return resolve(document.querySelector(selector))
-            }
 
+        const elem = document.querySelector(selector)
+        if (elem) return elem
+
+        return new Promise(resolve => {
             const observer = new MutationObserver(() => {
-                if (document.querySelector(selector)) {
-                    resolve(document.querySelector(selector))
+                const elem = document.querySelector(selector)
+                if (elem) {
+                    resolve(elem)
                     observer.disconnect()
                 }
             })
