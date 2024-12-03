@@ -16,7 +16,7 @@ English: [youtube.com/watch?v=jB1-z6LbX5w](https://www.youtube.com/watch?v=jB1-z
 German: [youtube.com/watch?v=HmQ7_ZgVNxg](https://www.youtube.com/watch?v=HmQ7_ZgVNxg)
 
 # Usage
-
+0.  [Request](https://x.com/settings/your_twitter_data/data) (takes several days) and download your Data Export and unzip it
 1.  Log into your Twitter account
 2.  Open the browser console (F12 or cmd+option+i)
 3.  Paste the [whole script](https://raw.githubusercontent.com/lucahammer/tweetXer/main/tweetXer.js) into the console and press enter
