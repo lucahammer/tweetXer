@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.9.2
+// @version      0.9.3
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -19,7 +19,7 @@
 
 (function () {
     let TweetsXer = {
-        version: '0.9.1',
+        version: '0.9.3',
         TweetCount: 0,
         dId: "exportUpload",
         tIds: [],
@@ -149,12 +149,11 @@
                             // If there is no amount set to skip, automatically try to skip the amount
                             // that has been deleted already. Difference of Tweeets in file to count on profile
                             // 5% tolerance to prevent skipping too much
-                            TweetsXer.skip = document.getElementById('skipCount').value
                             TweetsXer.skip = TweetsXer.total - TweetsXer.TweetCount - parseInt(TweetsXer.total / 20)
                             TweetsXer.skip = Math.max(0, TweetsXer.skip)
                         }
                         else {
-                            TweetsXer.skip = 0
+                            TweetsXer.skip = document.getElementById('skipCount').value
                         }
                         console.log(`Skipping oldest ${TweetsXer.skip} Tweets. Use advanced options to manually set how many to skip. Enter 0 to prevent the automatic calculation.`)
                         TweetsXer.tIds.reverse()
