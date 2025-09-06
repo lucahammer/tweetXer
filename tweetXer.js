@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.10.0
+// @version      0.9.3
 // @description  Delete all your Tweets for free.
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
@@ -11,6 +11,7 @@
 // @match        https://mobile.twitter.com/*
 // @icon         https://www.google.com/s2/favicons?domain=twitter.com
 // @grant        none
+// @run-at       document-idle
 // @downloadURL  https://update.greasyfork.org/scripts/476062/TweetXer.user.js
 // @updateURL    https://update.greasyfork.org/scripts/476062/TweetXer.meta.js
 // @supportURL   https://github.com/lucahammer/tweetXer/issues
@@ -18,7 +19,7 @@
 
 (function () {
     let TweetsXer = {
-        version: '0.10.0',
+        version: '0.9.3',
         TweetCount: 0,
         dId: "exportUpload",
         tIds: [],
@@ -32,10 +33,10 @@
         unfavURL: '/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
         deleteMessageURL: '/i/api/graphql/BJ6DtxA2llfjnRoRjaiIiw/DMMessageDeleteMutation',
         deleteConvoURL: '/i/api/1.1/dm/conversation/USER_ID-CONVERSATION_ID/delete.json',
-        bookmarksURL: '/i/api/graphql/YnSSREbpZZHAaNdnEk4ycA/Bookmarks?',
         deleteDMsOneByOne: false,
         username: '',
         action: '',
+        bookmarksURL: '/i/api/graphql/L7vvM2UluPgWOW4GDvWyvw/Bookmarks?',
         bookmarks: [],
         bookmarksNext: '',
         baseUrl: 'https://x.com',
@@ -45,6 +46,7 @@
 
         async init() {
             this.baseUrl = `https://${window.location.hostname}`
+            this.updateTransactionId()
             this.createUploadForm()
             await this.getTweetCount()
             this.ct0 = this.getCookie('ct0')
@@ -60,6 +62,11 @@
             return match ? match[1] : null
         },
 
+        updateTransactionId() {
+            // random string
+            this.transaction_id = [...crypto.getRandomValues(new Uint8Array(95))]
+                .map((x, i) => (i = x / 255 * 61 | 0, String.fromCharCode(i + (i > 9 ? i > 35 ? 61 : 55 : 48)))).join``
+        },
 
         updateTitle(text) {
             document.getElementById('tweetsXer_title').textContent = text
@@ -253,23 +260,17 @@
                 if (TweetsXer.bookmarksNext.length > 0) {
                     variables = `{"count":20,"cursor":"${TweetsXer.bookmarksNext}","includePromotedContent":false}`
                 } else variables = '{"count":20,"includePromotedContent":false}'
-
-                let fetch_url = TweetsXer.baseUrl + TweetsXer.bookmarksURL + new URLSearchParams({
+                let response = await fetch(TweetsXer.baseUrl + TweetsXer.bookmarksURL + new URLSearchParams({
                     variables: variables,
-                    features: '{"rweb_video_screen_enabled":false,"profile_label_improvements_pcf_label_in_post_enabled":true,"rweb_tipjar_consumption_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":true,"responsive_web_jetfuel_frame":false,"responsive_web_grok_share_attachment_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":true,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_enhance_cards_enabled":false}'
-                })
-                let transaction_id = await generateTID(fetch_url)
-
-                let response = await fetch(fetch_url, {
+                    features: '{"graphql_timeline_v2_bookmark_timeline":true,"rweb_tipjar_consumption_enabled":true,"responsive_web_graphql_exclude_directive_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"rweb_video_timestamps_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_enhance_cards_enabled":false}'
+                }), {
                     "headers": {
                         "authorization": TweetsXer.authorization,
                         "content-type": "application/json",
-                        "x-twitter-auth-type": "OAuth2Session",
+                        "x-client-transaction-id": TweetsXer.transaction_id,
                         "x-csrf-token": TweetsXer.ct0,
-                        "x-twitter-client-language": "en",
                         "x-twitter-active-user": "yes",
-                        "x-client-transaction-id": transaction_id,
-                        "x-xp-forwarded-for": ''
+                        "x-twitter-auth-type": "OAuth2Session",
                     },
                     "referrer": `${TweetsXer.baseUrl}/i/bookmarks`,
                     "referrerPolicy": "strict-origin-when-cross-origin",
@@ -297,7 +298,6 @@
                     TweetsXer.updateInfo(`${TweetsXer.dCount} Bookmarks collected`)
                 } else {
                     console.log(response)
-                    break
                 }
 
                 if (!response.headers.get('x-rate-limit-remaining') && response.headers.get('x-rate-limit-remaining') < 1) {
@@ -336,9 +336,7 @@
                             "x-client-transaction-id": TweetsXer.transaction_id,
                             "x-csrf-token": TweetsXer.ct0,
                             "x-twitter-active-user": "yes",
-                            "x-twitter-auth-type": "OAuth2Session",
-                            "x-client-transaction-id": await generateTID(url),
-                            "x-xp-forwarded-for": ''
+                            "x-twitter-auth-type": "OAuth2Session"
                         },
                         "referrer": `${TweetsXer.baseUrl}/${TweetsXer.username}/with_replies`,
                         "referrerPolicy": "strict-origin-when-cross-origin",
@@ -444,9 +442,7 @@
                         "x-client-transaction-id": TweetsXer.transaction_id,
                         "x-csrf-token": TweetsXer.ct0,
                         "x-twitter-active-user": "yes",
-                        "x-twitter-auth-type": "OAuth2Session",
-                        "x-client-transaction-id": await generateTID(url),
-                        "x-xp-forwarded-for": ''
+                        "x-twitter-auth-type": "OAuth2Session"
                     },
                     "referrer": `${TweetsXer.baseUrl}/messages`,
                     "body": 'dm_secret_conversations_enabled=false&krs_registration_enabled=true&cards_platform=Web-12&include_cards=1&include_ext_alt_text=true&include_ext_limited_action_results=true&include_quote_count=true&include_reply_count=1&tweet_mode=extended&include_ext_views=true&dm_users=false&include_groups=true&include_inbox_timelines=true&include_ext_media_color=true&supports_reactions=true&supports_edit=true&include_conversation_info=true',
@@ -676,358 +672,4 @@
     }
 
     TweetsXer.init()
-
-    // START CODE BY Ali HaSsan TaHir
-    // https://greasyfork.org/en/scripts/536593-generate-x-client-transaction-id/code
-    const savedFrames = [];
-    const ADDITIONAL_RANDOM_NUMBER = 3;
-    const DEFAULT_KEYWORD = "obfiowerehiring";
-    let defaultRowIndex = null;
-    let defaultKeyBytesIndices = null;
-
-    async function generateTID(api_path) {
-        if (!defaultRowIndex || !defaultKeyBytesIndices) {
-            const { firstIndex, remainingIndices } = await getIndices();
-            defaultRowIndex = firstIndex;
-            defaultKeyBytesIndices = remainingIndices;
-        }
-
-        const method = "GET"
-        const path = api_path
-        const key = await getKey();
-        const keyBytes = getKeyBytes(key);
-        const animationKey = getAnimationKey(keyBytes);
-        const xTID = await getTransactionID(method, path, key, keyBytes, animationKey)
-        //console.log("Generated Transaction ID: ", xTID)
-        return (xTID)
-    }
-
-    const getFramesInterval = setInterval(() => {
-        const nodes = document.querySelectorAll('[id^="loading-x-anim"]');
-
-        if (nodes.length === 0 && savedFrames.length !== 0) {
-            clearInterval(getFramesInterval);
-            const serialized = savedFrames.map(node => node.outerHTML);
-            localStorage.setItem("savedFrames", JSON.stringify(serialized));
-            return;
-        }
-
-        nodes.forEach(removedNode => {
-            if (!savedFrames.includes(removedNode)) {
-                savedFrames.push(removedNode);
-            }
-        });
-    }, 10);
-
-
-    async function getIndices() {
-        let url = null;
-        const keyByteIndices = [];
-        const targetFileMatch = document.documentElement.innerHTML.match(/"ondemand\.s":"([0-9a-f]+)"/);
-
-        if (targetFileMatch) {
-            const hexString = targetFileMatch[1];
-            url = `https://abs.twimg.com/responsive-web/client-web/ondemand.s.${hexString}a.js`;
-        } else {
-            throw new Error("Transaction ID generator needs an update.");
-        }
-
-        const INDICES_REGEX = /\(\w{1}\[(\d{1,2})\],\s*16\)/g;
-
-        try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch indices file: ${response.statusText}`);
-            }
-
-            const jsContent = await response.text();
-            const keyByteIndicesMatch = [...jsContent.matchAll(INDICES_REGEX)];
-
-            keyByteIndicesMatch.forEach(item => {
-                keyByteIndices.push(item[1]);
-            });
-
-            if (keyByteIndices.length === 0) {
-                throw new Error("Couldn't get KEY_BYTE indices from file content");
-            }
-
-            const keyByteIndicesInt = keyByteIndices.map(Number);
-            return {
-                firstIndex: keyByteIndicesInt[0],
-                remainingIndices: keyByteIndicesInt.slice(1),
-            };
-        } catch (error) {
-            showError(error.message);
-            return null;
-        }
-    }
-
-    async function getKey() {
-        return new Promise(resolve => {
-            const meta = document.querySelector('meta[name="twitter-site-verification"]');
-            if (meta) resolve(meta.getAttribute("content"));
-        });
-    }
-
-    function getKeyBytes(key) {
-        return Array.from(atob(key).split("").map(c => c.charCodeAt(0)));
-    }
-
-    function getFrames() {
-        const stored = localStorage.getItem("savedFrames");
-        if (stored) {
-            const frames = JSON.parse(stored);
-            const parser = new DOMParser();
-
-            return frames.map(frame =>
-                parser.parseFromString(frame, "text/html").body.firstChild
-            );
-        }
-        return [];
-    }
-
-    function get2DArray(keyBytes) {
-        const frames = getFrames();
-        const array = Array.from(
-            frames[keyBytes[5] % 4].children[0].children[1]
-                .getAttribute("d")
-                .slice(9)
-                .split("C")
-        ).map(item =>
-            item
-                .replace(/[^\d]+/g, " ")
-                .trim()
-                .split(" ")
-                .map(Number)
-        );
-        return array;
-    }
-
-    function solve(value, minVal, maxVal, rounding) {
-        const result = (value * (maxVal - minVal)) / 255 + minVal;
-        return rounding ? Math.floor(result) : Math.round(result * 100) / 100;
-    }
-
-    function animate(frames, targetTime) {
-        const fromColor = frames.slice(0, 3).concat(1).map(Number);
-        const toColor = frames.slice(3, 6).concat(1).map(Number);
-        const fromRotation = [0.0];
-        const toRotation = [solve(frames[6], 60.0, 360.0, true)];
-        const remainingFrames = frames.slice(7);
-        const curves = remainingFrames.map((item, index) =>
-            solve(item, isOdd(index), 1.0, false)
-        );
-        const cubic = new Cubic(curves);
-        const val = cubic.getValue(targetTime);
-        const color = interpolate(fromColor, toColor, val).map(value =>
-            value > 0 ? value : 0
-        );
-        const rotation = interpolate(fromRotation, toRotation, val);
-        const matrix = convertRotationToMatrix(rotation[0]);
-        const strArr = color.slice(0, -1).map(value =>
-            Math.round(value).toString(16)
-        );
-
-        for (const value of matrix) {
-            let rounded = Math.round(value * 100) / 100;
-            if (rounded < 0) {
-                rounded = -rounded;
-            }
-            const hexValue = floatToHex(rounded);
-            strArr.push(
-                hexValue.startsWith(".")
-                    ? `0${hexValue}`.toLowerCase()
-                    : hexValue || "0"
-            );
-        }
-
-        const animationKey = strArr.join("").replace(/[.-]/g, "");
-        return animationKey;
-    }
-
-    function isOdd(num) {
-        return num % 2 !== 0 ? -1.0 : 0.0;
-    }
-
-    function getAnimationKey(keyBytes) {
-        const totalTime = 4096;
-
-        if (typeof defaultRowIndex === "undefined" || typeof defaultKeyBytesIndices === "undefined") {
-            throw new Error("Indices not initialized");
-        }
-
-        const rowIndex = keyBytes[defaultRowIndex] % 16;
-
-        const frameTime = defaultKeyBytesIndices.reduce((acc, index) => {
-            return acc * (keyBytes[index] % 16);
-        }, 1);
-
-        const arr = get2DArray(keyBytes);
-        if (!arr || !arr[rowIndex]) {
-            throw new Error("Invalid frame data");
-        }
-
-        const frameRow = arr[rowIndex];
-        const targetTime = frameTime / totalTime;
-        const animationKey = animate(frameRow, targetTime);
-
-        return animationKey;
-    }
-
-    async function getTransactionID(method, path, key, keyBytes, animationKey) {
-        if (!method || !path || !key || !animationKey) {
-            return console.log("Invalid call.")
-        }
-        const timeNow = Math.floor((Date.now() - 1682924400 * 1000) / 1000);
-        const timeNowBytes = [
-            timeNow & 0xff,
-            (timeNow >> 8) & 0xff,
-            (timeNow >> 16) & 0xff,
-            (timeNow >> 24) & 0xff,
-        ];
-
-        const inputString = `${method}!${path}!${timeNow}${DEFAULT_KEYWORD}${animationKey}`;
-        const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(inputString));
-        const hashBytes = Array.from(new Uint8Array(hashBuffer));
-        const randomNum = Math.floor(Math.random() * 256);
-        const bytesArr = [
-            ...keyBytes,
-            ...timeNowBytes,
-            ...hashBytes.slice(0, 16),
-            ADDITIONAL_RANDOM_NUMBER,
-        ];
-        const out = new Uint8Array(bytesArr.length + 1);
-        out[0] = randomNum;
-        bytesArr.forEach((item, index) => {
-            out[index + 1] = item ^ randomNum;
-        });
-        const transactionId = btoa(String.fromCharCode(...out)).replace(/=+$/, "");
-        return transactionId;
-    }
-
-    class Cubic {
-        constructor(curves) {
-            this.curves = curves;
-        }
-
-        getValue(time) {
-            let startGradient = 0;
-            let endGradient = 0;
-            let start = 0.0;
-            let mid = 0.0;
-            let end = 1.0;
-
-            if (time <= 0.0) {
-                if (this.curves[0] > 0.0) {
-                    startGradient = this.curves[1] / this.curves[0];
-                } else if (this.curves[1] === 0.0 && this.curves[2] > 0.0) {
-                    startGradient = this.curves[3] / this.curves[2];
-                }
-                return startGradient * time;
-            }
-
-            if (time >= 1.0) {
-                if (this.curves[2] < 1.0) {
-                    endGradient = (this.curves[3] - 1.0) / (this.curves[2] - 1.0);
-                } else if (this.curves[2] === 1.0 && this.curves[0] < 1.0) {
-                    endGradient = (this.curves[1] - 1.0) / (this.curves[0] - 1.0);
-                }
-                return 1.0 + endGradient * (time - 1.0);
-            }
-
-            while (start < end) {
-                mid = (start + end) / 2;
-                const xEst = this.calculate(this.curves[0], this.curves[2], mid);
-                if (Math.abs(time - xEst) < 0.00001) {
-                    return this.calculate(this.curves[1], this.curves[3], mid);
-                }
-                if (xEst < time) {
-                    start = mid;
-                } else {
-                    end = mid;
-                }
-            }
-            return this.calculate(this.curves[1], this.curves[3], mid);
-        }
-
-        calculate(a, b, m) {
-            return (
-                3.0 * a * (1 - m) * (1 - m) * m +
-                3.0 * b * (1 - m) * m * m +
-                m * m * m
-            );
-        }
-    }
-
-    function interpolate(fromList, toList, f) {
-        if (fromList.length !== toList.length) {
-            throw new Error("Invalid list");
-        }
-        const out = [];
-        for (let i = 0; i < fromList.length; i++) {
-            out.push(interpolateNum(fromList[i], toList[i], f));
-        }
-        return out;
-    }
-
-    function interpolateNum(fromVal, toVal, f) {
-        if (typeof fromVal === "number" && typeof toVal === "number") {
-            return fromVal * (1 - f) + toVal * f;
-        }
-        if (typeof fromVal === "boolean" && typeof toVal === "boolean") {
-            return f < 0.5 ? fromVal : toVal;
-        }
-    }
-
-    function convertRotationToMatrix(degrees) {
-        const radians = (degrees * Math.PI) / 180;
-        const cos = Math.cos(radians);
-        const sin = Math.sin(radians);
-        return [cos, sin, -sin, cos, 0, 0];
-    }
-
-    function floatToHex(x) {
-        const result = [];
-        let quotient = Math.floor(x);
-        let fraction = x - quotient;
-
-        while (quotient > 0) {
-            quotient = Math.floor(x / 16);
-            const remainder = Math.floor(x - quotient * 16);
-            if (remainder > 9) {
-                result.unshift(String.fromCharCode(remainder + 55));
-            } else {
-                result.unshift(remainder.toString());
-            }
-            x = quotient;
-        }
-
-        if (fraction === 0) {
-            return result.join("");
-        }
-
-        result.push(".");
-
-        while (fraction > 0) {
-            fraction *= 16;
-            const integer = Math.floor(fraction);
-            fraction -= integer;
-            if (integer > 9) {
-                result.push(String.fromCharCode(integer + 55));
-            } else {
-                result.push(integer.toString());
-            }
-        }
-
-        return result.join("");
-    }
-
-    function base64Encode(array) {
-        return btoa(String.fromCharCode.apply(null, array));
-    }
-
-    // END CODE BY Ali HaSsan TaHir
-
-
-
 })()
