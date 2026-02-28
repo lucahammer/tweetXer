@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         TweetXer
 // @namespace    https://github.com/lucahammer/tweetXer/
-// @version      0.9.4
-// @description  Delete all your Tweets for free.
+// @version      0.9.5
+// @description  Delete all your Tweets for free. (Fixed: 429/error handling + Resume + Skip counter)
 // @author       Luca,dbort,pReya,Micolithe,STrRedWolf
 // @license      NoHarm-draft
 // @match        https://x.com/*
@@ -19,7 +19,7 @@
 
 (function () {
     let TweetsXer = {
-        version: '0.9.4',
+        version: '0.9.5',
         TweetCount: 0,
         dId: "exportUpload",
         tIds: [],
@@ -29,6 +29,9 @@
         skip: 0,
         total: 0,
         dCount: 0,
+        STORAGE_KEY: 'tweetXer_progress',
+        SAVE_INTERVAL: 50,
+        sCount: 0,
         deleteURL: '/i/api/graphql/VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
         unfavURL: '/i/api/graphql/ZYKSe-w7KEslx3JhSIk5LA/UnfavoriteTweet',
         deleteMessageURL: '/i/api/graphql/BJ6DtxA2llfjnRoRjaiIiw/DMMessageDeleteMutation',
@@ -48,10 +51,125 @@
             this.baseUrl = `https://${window.location.hostname}`
             this.updateTransactionId()
             this.createUploadForm()
+            this.checkResume()
             await this.getTweetCount()
             this.ct0 = this.getCookie('ct0')
             this.username = document.location.href.split('/')[3].replace('#', '')
         },
+
+        // ---- Resume feature ----
+        saveProgress() {
+            try {
+                const state = {
+                    tIds: this.tIds,
+                    dCount: this.dCount,
+                    sCount: this.sCount,
+                    total: this.total,
+                    action: this.action,
+                    savedAt: new Date().toISOString()
+                }
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state))
+            } catch (e) {
+                console.log('Failed to save progress:', e)
+            }
+        },
+
+        loadProgress() {
+            try {
+                const raw = localStorage.getItem(this.STORAGE_KEY)
+                if (!raw) return null
+                return JSON.parse(raw)
+            } catch (e) {
+                console.log('Failed to load progress:', e)
+                return null
+            }
+        },
+
+        clearProgress() {
+            try {
+                localStorage.removeItem(this.STORAGE_KEY)
+            } catch (e) {
+                console.log('Failed to clear progress:', e)
+            }
+        },
+
+        checkResume() {
+            const saved = this.loadProgress()
+            if (!saved || !saved.tIds || saved.tIds.length === 0) return
+            console.log(`[tweetXer] Resume data found: ${saved.dCount} deleted, ${saved.tIds.length} remaining`)
+
+            const elapsed = Date.now() - new Date(saved.savedAt).getTime()
+            const hoursAgo = (elapsed / 1000 / 60 / 60).toFixed(1)
+            const remaining = saved.tIds.length
+            const skipped = saved.sCount || 0
+
+            // Disable file input to prevent accidental re-upload
+            const fileInput = document.getElementById(`${this.dId}_file`)
+            if (fileInput) fileInput.disabled = true
+
+            const resumeDiv = document.createElement('div')
+            resumeDiv.id = 'tweetXer_resume'
+            resumeDiv.style = 'background:#FFD700;padding:10px;margin:5px 0;border-radius:8px;color:black;'
+            resumeDiv.innerHTML = `
+                <p><strong>Previous progress found</strong></p>
+                <p>${saved.dCount} deleted${skipped > 0 ? ` / ${skipped} skipped` : ''} / ${remaining} remaining (interrupted ${hoursAgo} hours ago)</p>
+                <p>Action: ${saved.action}</p>
+                <button id="tweetXer_resumeBtn" style="background:#4CAF50;color:white;border:none;border-radius:666px;padding:5px 15px;margin-right:10px;cursor:pointer;">Resume</button>
+                <button id="tweetXer_discardBtn" style="background:#f44336;color:white;border:none;border-radius:666px;padding:5px 15px;cursor:pointer;">Discard and start over</button>
+            `
+            const container = document.getElementById(this.dId)
+            const titleElem = document.getElementById('tweetsXer_title')
+            if (titleElem && titleElem.nextSibling) {
+                container.querySelector('div').insertBefore(resumeDiv, titleElem.nextSibling)
+            } else {
+                container.appendChild(resumeDiv)
+            }
+
+            document.getElementById('tweetXer_resumeBtn').addEventListener('click', () => {
+                resumeDiv.remove()
+                TweetsXer.resumeFromSaved(saved)
+            })
+            document.getElementById('tweetXer_discardBtn').addEventListener('click', () => {
+                TweetsXer.clearProgress()
+                resumeDiv.remove()
+                if (fileInput) fileInput.disabled = false
+                TweetsXer.updateInfo('Progress discarded. Select a file to start over.')
+            })
+        },
+
+        async resumeFromSaved(saved) {
+            while (!this.ct0 || !this.username) {
+                console.log('[tweetXer] Waiting for init to complete...')
+                await this.sleep(500)
+            }
+
+            this.tIds = saved.tIds
+            this.dCount = saved.dCount
+            this.sCount = saved.sCount || 0
+            this.total = saved.total
+            this.action = saved.action
+
+            document.getElementById(`${this.dId}_file`)?.remove()
+            this.createProgressBar()
+
+            console.log(`[tweetXer] Resuming: ${this.tIds.length} items remaining, ${this.dCount} already deleted`)
+
+            if (this.action === 'untweet') {
+                this.updateTitle(`TweetXer: Resuming - ${this.tIds.length} Tweets remaining`)
+                await this.deleteTweets()
+            } else if (this.action === 'unfav') {
+                this.updateTitle(`TweetXer: Resuming - ${this.tIds.length} Favs remaining`)
+                await this.deleteFavs()
+            } else if (this.action === 'undm') {
+                this.updateTitle(`TweetXer: Resuming - ${this.tIds.length} DMs remaining`)
+                if (this.deleteDMsOneByOne) {
+                    await this.deleteDMs()
+                } else {
+                    await this.deleteConvos()
+                }
+            }
+        },
+        // ---- End of resume feature ----
 
         sleep(ms) {
             return new Promise((resolve) => setTimeout(resolve, ms))
@@ -87,8 +205,10 @@
         },
 
         updateProgressBar() {
-            document.getElementById('progressbar').value = this.dCount
-            this.updateInfo(`${this.dCount} deleted. ${this.tId}`)
+            document.getElementById('progressbar').value = this.dCount + this.sCount
+            const parts = [`${this.dCount} deleted`]
+            if (this.sCount > 0) parts.push(`${this.sCount} skipped`)
+            this.updateInfo(`${parts.join(' / ')}. ${this.tId}`)
         },
 
         processFile() {
@@ -145,23 +265,21 @@
                     }
 
                     if (TweetsXer.action == 'untweet') {
-                        if (document.getElementById('skipCount').value.length < 1) {
-                            // If there is no amount set to skip, automatically try to skip the amount
-                            // that has been deleted already. Difference of Tweeets in file to count on profile
-                            // 5% tolerance to prevent skipping too much
-                            TweetsXer.skip = TweetsXer.total - TweetsXer.TweetCount - parseInt(TweetsXer.total / 20)
-                            TweetsXer.skip = Math.max(0, TweetsXer.skip)
+                        TweetsXer.skip = document.getElementById('skipCount').value.length > 0
+                            ? parseInt(document.getElementById('skipCount').value)
+                            : 0
+                        if (TweetsXer.skip > 0) {
+                            console.log(`Skipping oldest ${TweetsXer.skip} Tweets (manual).`)
+                        } else {
+                            console.log(`Processing all ${TweetsXer.total} Tweets. Already-deleted ones will be skipped automatically (404).`)
                         }
-                        else {
-                            TweetsXer.skip = document.getElementById('skipCount').value
-                        }
-                        console.log(`Skipping oldest ${TweetsXer.skip} Tweets. Use advanced options to manually set how many to skip. Enter 0 to prevent the automatic calculation.`)
                         TweetsXer.tIds.reverse()
                         TweetsXer.tIds = TweetsXer.tIds.slice(TweetsXer.skip)
                         TweetsXer.dCount = TweetsXer.skip
                         TweetsXer.tIds.reverse()
                         TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} Tweets`)
 
+                        TweetsXer.saveProgress()
                         TweetsXer.deleteTweets()
                     } else if (TweetsXer.action == 'unfav') {
                         TweetsXer.skip = document.getElementById('skipCount').value.length > 0 ? document.getElementById('skipCount').value : 0
@@ -170,6 +288,7 @@
                         TweetsXer.dCount = TweetsXer.skip
                         TweetsXer.tIds.reverse()
                         TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} Favs`)
+                        TweetsXer.saveProgress()
                         TweetsXer.deleteFavs()
                     } else if (TweetsXer.action == 'undm') {
                         TweetsXer.skip = document.getElementById('skipCount').value.length > 0 ? document.getElementById('skipCount').value : 0
@@ -179,10 +298,12 @@
                         TweetsXer.tIds.reverse()
                         if (this.deleteDMsOneByOne) {
                             TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} DMs`)
+                            TweetsXer.saveProgress()
                             TweetsXer.deleteDMs()
                         }
                         else {
                             TweetsXer.updateTitle(`TweetXer: Deleting ${TweetsXer.total} DM Conversations`)
+                            TweetsXer.saveProgress()
                             TweetsXer.deleteConvos()
                         }
 
@@ -356,6 +477,7 @@
                             console.log('rate limit hit')
                             console.log(response.headers.get('x-rate-limit-remaining'))
                             TweetsXer.ratelimitreset = response.headers.get('x-rate-limit-reset')
+                            TweetsXer.saveProgress()
                             let sleeptime = TweetsXer.ratelimitreset - Math.floor(Date.now() / 1000)
                             while (sleeptime > 0) {
                                 sleeptime = TweetsXer.ratelimitreset - Math.floor(Date.now() / 1000)
@@ -372,23 +494,51 @@
                     }
                     else if (response.status == 429) {
                         TweetsXer.tIds.push(TweetsXer.tId)
-                        console.log('Received status code 429. Waiting for 1 second before trying again.')
-                        await TweetsXer.sleep(1000)
+                        console.log('Received status code 429.')
+                        TweetsXer.saveProgress()
+
+                        let resetHeader = response.headers.get('x-rate-limit-reset')
+                        if (resetHeader) {
+                            let sleeptime = parseInt(resetHeader) - Math.floor(Date.now() / 1000)
+                            sleeptime = Math.max(sleeptime, 30)
+                            console.log(`Waiting ${sleeptime} seconds for rate limit reset.`)
+                            while (sleeptime > 0) {
+                                sleeptime = parseInt(resetHeader) - Math.floor(Date.now() / 1000)
+                                TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
+                                await TweetsXer.sleep(1000)
+                            }
+                        } else {
+                            console.log('No reset header. Waiting 60 seconds.')
+                            let sleeptime = 60
+                            while (sleeptime > 0) {
+                                sleeptime--
+                                TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
+                                await TweetsXer.sleep(1000)
+                            }
+                        }
+                        resolve('rate_limited')
                     }
                     else {
-                        console.log(response)
+                        console.log(`Unexpected status: ${response.status}`, response)
+                        TweetsXer.sCount++
+                        TweetsXer.updateProgressBar()
+                        resolve('skipped')
                     }
 
                 } catch (error) {
-                    if (error.Name === 'AbortError') {
+                    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
                         TweetsXer.tIds.push(TweetsXer.tId)
                         console.log('Request timeout.')
                         let sleeptime = 15
                         while (sleeptime > 0) {
                             sleeptime--
-                            TweetsXer.updateInfo(`Ratelimited. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
+                            TweetsXer.updateInfo(`Timeout. Waiting ${sleeptime} seconds. ${TweetsXer.dCount} deleted.`)
                             await TweetsXer.sleep(1000)
                         }
+                        resolve('timeout')
+                    }
+                    else {
+                        console.log(`Unexpected error: ${error.name}: ${error.message}`)
                         resolve('error')
                     }
                 }
@@ -399,9 +549,13 @@
             while (this.tIds.length > 0) {
                 this.tId = this.tIds.pop()
                 await this.sendRequest(this.baseUrl + this.deleteURL)
+                if (this.dCount % this.SAVE_INTERVAL === 0) this.saveProgress()
             }
             this.tId = ''
             this.updateProgressBar()
+            this.clearProgress()
+            this.updateInfo(`Done! ${this.dCount} deleted${this.sCount > 0 ? ` / ${this.sCount} skipped (already deleted etc.)` : ''}.`)
+            console.log(`Finished. Deleted ${this.dCount}, skipped ${this.sCount}. Progress cleared.`)
         },
 
         async deleteFavs() {
@@ -413,10 +567,14 @@
             while (this.tIds.length > 0) {
                 this.tId = this.tIds.pop()
                 await this.sendRequest(this.baseUrl + this.unfavURL)
+                if (this.dCount % this.SAVE_INTERVAL === 0) this.saveProgress()
             }
             this.tId = ''
             this.updateTitle('TweetXer')
             this.updateProgressBar()
+            this.clearProgress()
+            this.updateInfo(`Done! ${this.dCount} Favs deleted${this.sCount > 0 ? ` / ${this.sCount} skipped` : ''}.`)
+            console.log(`Finished. Deleted ${this.dCount} favs, skipped ${this.sCount}. Progress cleared.`)
         },
 
         async deleteDMs() {
@@ -426,9 +584,13 @@
                     this.baseUrl + this.deleteMessageURL,
                     body = `{\"variables\":{\"messageId\":\"${this.tId}\"},\"requestId\":\""}`
                 )
+                if (this.dCount % this.SAVE_INTERVAL === 0) this.saveProgress()
             }
             this.tId = ''
             this.updateProgressBar()
+            this.clearProgress()
+            this.updateInfo(`Done! ${this.dCount} DMs deleted.`)
+            console.log(`Finished. Deleted ${this.dCount} DMs. Progress cleared.`)
         },
 
         async deleteConvos() {
@@ -456,6 +618,7 @@
                 if (response.status == 204) {
                     TweetsXer.dCount++
                     TweetsXer.updateProgressBar()
+                    if (TweetsXer.dCount % TweetsXer.SAVE_INTERVAL === 0) TweetsXer.saveProgress()
 
                     if (response.headers.get('x-rate-limit-remaining') != null && response.headers.get('x-rate-limit-remaining') < 1) {
                         console.log('rate limit hit')
@@ -487,6 +650,9 @@
             }
             this.tId = ''
             this.updateProgressBar()
+            this.clearProgress()
+            this.updateInfo(`Done! ${this.dCount} DM conversations deleted.`)
+            console.log(`Finished. Deleted ${this.dCount} conversations. Progress cleared.`)
         },
 
         async getTweetCount() {
@@ -557,7 +723,7 @@
 
         async slowDelete() {
             //document.getElementById("toggleAdvanced").click()
-            document.getElementById('start').remove()
+            document.getElementById('start')?.remove()
             TweetsXer.total = TweetsXer.TweetCount
             TweetsXer.createProgressBar()
 
@@ -578,7 +744,7 @@
                 // hide recommended profiles and stuff
                 document.querySelectorAll('section [data-testid="cellInnerDiv"]>div>div>div').forEach(x => x.remove())
                 document.querySelectorAll('section [data-testid="cellInnerDiv"]>div>div>[role="link"]').forEach(x => x.remove())
-                
+
                 try {
                     const moreElement = document.querySelector(more)
                     if (moreElement) {
@@ -620,7 +786,7 @@
                     // Change the 100 to how often you want an update.
                     // 10 for every 10th Tweet, 1 for every Tweet, 100 for every 100th Tweet
                     if (TweetsXer.dCount % 100 == 0) console.log(`${new Date().toUTCString()} Deleted ${TweetsXer.dCount} Tweets`)
-                    
+
                 } catch (error) {
                     console.error(`Error deleting tweet: ${error.message}`)
                     consecutiveErrors++
